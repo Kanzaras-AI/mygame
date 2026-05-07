@@ -20,7 +20,18 @@
     --red: #f44336;
     --accent: #222;
     --overlay-bg: rgba(0,0,0,0.55);
+    /* Player identity colors */
+    --p1-color: #E53935;
+    --p2-color: #1E88E5;
   }
+
+  /* Per-player color variable: cascades to confetti & correct-anim border */
+  #card1 { --p-color: var(--p1-color); border-color: var(--p1-color); }
+  #card2 { --p-color: var(--p2-color); border-color: var(--p2-color); }
+  #score1, #grid-score1 { color: var(--p1-color); }
+  #score2, #grid-score2 { color: var(--p2-color); }
+  .grid-card.claimed-1 { --p-color: var(--p1-color); }
+  .grid-card.claimed-2 { --p-color: var(--p2-color); }
 
   html, body {
     height: 100%;
@@ -589,7 +600,7 @@
   }
   .card.correct-anim {
     animation: correctBounce 0.35s cubic-bezier(0.34, 1.7, 0.5, 1) forwards;
-    border-color: var(--green) !important;
+    border-color: var(--p-color, var(--green)) !important;
   }
 
   @keyframes shake {
@@ -617,9 +628,9 @@
 
   /* --- Score pop --- */
   @keyframes scorePop {
-    0%   { transform: scale(1);    color: var(--score-color); }
-    40%  { transform: scale(1.35); color: var(--green); }
-    100% { transform: scale(1);    color: var(--score-color); }
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.35); }
+    100% { transform: scale(1); }
   }
   .score-value.pop, .grid-bar-score.pop {
     animation: scorePop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -638,10 +649,11 @@
     position: absolute;
     left: 50%;
     top: 50%;
-    font-size: 20px;
     pointer-events: none;
     will-change: transform, opacity;
     animation: confettiFly 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    background: var(--p-color, #888);
+    border-radius: 50%;
   }
   @keyframes confettiFly {
     0%   { transform: translate(-50%, -50%) translate(0, 0) rotate(0deg) scale(0.6); opacity: 1; }
@@ -1840,31 +1852,38 @@ function placeSymbolsOnCard(cardEl, symbolIndices, cardDiameter, hintMatchSymbol
   cardEl.innerHTML = '';
   const R = cardDiameter / 2;
   const margin = 4;
-  const placed = [];
+  const n = symbolIndices.length;
+  // Golden angle ≈ 137.5° — gives the classic Vogel sunflower distribution.
+  const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 
-  for (let i = 0; i < symbolIndices.length; i++) {
-    const idx = symbolIndices[i];
-    const emoji = SYMBOLS[idx];
-    const size = randInt(MIN_SYMBOL_SIZE, MAX_SYMBOL_SIZE);
+  // Spiral fits inside (R - margin). Slot size is the approximate
+  // nearest-neighbour distance for n points in that disk; ±8% jitter
+  // stays safely below it so symbols never overlap.
+  const R_outer  = R - margin;
+  const slotSize = R_outer * Math.sqrt(Math.PI / Math.max(n, 1));
+  const safeMax  = slotSize * 0.84;                  // 1 − 2·0.08 jitter headroom
+  const sizeMax  = Math.min(MAX_SYMBOL_SIZE, Math.floor(safeMax));
+  const sizeMin  = Math.min(MIN_SYMBOL_SIZE, sizeMax);
+  const jitter   = slotSize * 0.08;
+
+  for (let i = 0; i < n; i++) {
+    const idx  = symbolIndices[i];
+    const size = randInt(sizeMin, sizeMax);
     const half = size / 2;
-    const maxR = R - margin - half;
 
-    let cx, cy, tries = 0;
-    do {
-      const angle = rand(0, 2 * Math.PI);
-      const dist  = rand(0, maxR);
-      cx = R + dist * Math.cos(angle);
-      cy = R + dist * Math.sin(angle);
-      tries++;
-    } while (tries < 40 && placed.some(p => Math.hypot(p.cx - cx, p.cy - cy) < (p.half + half + 2)));
-    placed.push({ cx, cy, half });
+    const theta  = i * GOLDEN_ANGLE;
+    const radial = Math.sqrt((i + 0.5) / n) * (R_outer - half);
+    const jx     = (Math.random() * 2 - 1) * jitter;
+    const jy     = (Math.random() * 2 - 1) * jitter;
+    const cx     = R + radial * Math.cos(theta) + jx;
+    const cy     = R + radial * Math.sin(theta) + jy;
 
     const el = document.createElement('span');
-    el.textContent = emoji;
+    el.textContent = SYMBOLS[idx];
     el.className = 'symbol';
-    el.style.fontSize = size + 'px';
-    el.style.left = (cx - half) + 'px';
-    el.style.top  = (cy - half) + 'px';
+    el.style.fontSize  = size + 'px';
+    el.style.left      = (cx - half) + 'px';
+    el.style.top       = (cy - half) + 'px';
     el.style.transform = `rotate(${randInt(-30, 30)}deg)`;
     el.dataset.symbolIdx = idx;
     if (DEV_MODE && idx === hintMatchSymbol) el.classList.add('correct-hint');
@@ -1892,20 +1911,18 @@ function burstConfetti(cardEl, symbolIdx) {
     layer.className = 'confetti-layer';
     cardEl.appendChild(layer);
   }
-  const palette = (typeof symbolIdx === 'number' && symbolIdx >= 0)
-    ? [SYMBOLS[symbolIdx], '✨', '⭐', '💥', '🎉']
-    : ['✨', '⭐', '💥', '🎉', '🎊'];
   const N_PARTS = 14;
   for (let i = 0; i < N_PARTS; i++) {
     const p = document.createElement('span');
     p.className = 'confetti';
-    p.textContent = palette[i % palette.length];
     const angle = (Math.PI * 2 * i) / N_PARTS + (Math.random() - 0.5) * 0.4;
     const dist  = 60 + Math.random() * 40;
     p.style.setProperty('--cx',  Math.cos(angle) * dist + 'px');
     p.style.setProperty('--cy',  Math.sin(angle) * dist + 'px');
     p.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
-    p.style.fontSize = (14 + Math.random() * 10) + 'px';
+    const dotSize = 8 + Math.random() * 6;
+    p.style.width  = dotSize + 'px';
+    p.style.height = dotSize + 'px';
     layer.appendChild(p);
     setTimeout(() => p.remove(), 650);
   }
