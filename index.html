@@ -1,0 +1,2900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Symble</title>
+<style>
+  /* --- Reset & Base --- */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f8f8f8;
+    --card-bg: #ffffff;
+    --card-border: #ddd;
+    --card-shadow: 0 2px 10px rgba(0,0,0,0.12);
+    --divider: #e0e0e0;
+    --score-color: #222;
+    --label-color: #888;
+    --green: #4caf50;
+    --red: #f44336;
+    --accent: #222;
+    --overlay-bg: rgba(0,0,0,0.55);
+  }
+
+  html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ============================================================
+     SCREENS  — fade + slide transition
+     ============================================================ */
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    transform: translateY(14px);
+    pointer-events: none;
+    transition: opacity 0.32s ease,
+                transform 0.34s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .screen.active {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  /* --- Menu screen --- */
+  #menu-screen {
+    align-items: center;
+    justify-content: flex-start;
+    padding: 28px 18px 18px;
+    background: var(--bg);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* Decorative looping background */
+  .menu-bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+  }
+  .menu-bg .bg-card {
+    position: absolute;
+    width: 200px; height: 200px;
+    border-radius: 12px;
+    transform: rotate(15deg);
+    border: 2px solid var(--card-border);
+    background: rgba(255,255,255,0.55);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+    opacity: 0.32;
+    filter: blur(0.2px);
+  }
+  .menu-bg .bg-card span {
+    position: absolute;
+    line-height: 1;
+    transform-origin: center;
+  }
+  .bg-card-1 {
+    top: -70px; left: -60px;
+    animation: bgDrift1 22s ease-in-out infinite;
+  }
+  .bg-card-2 {
+    bottom: -80px; right: -60px;
+    animation: bgDrift2 26s ease-in-out infinite;
+  }
+  @keyframes bgDrift1 {
+    0%   { transform: rotate(0deg)   translate(0,    0); }
+    50%  { transform: rotate(180deg) translate(40px, 50px); }
+    100% { transform: rotate(360deg) translate(0,    0); }
+  }
+  @keyframes bgDrift2 {
+    0%   { transform: rotate(0deg)    translate(0,     0); }
+    50%  { transform: rotate(-180deg) translate(-40px, -50px); }
+    100% { transform: rotate(-360deg) translate(0,     0); }
+  }
+
+  .menu-content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Symble logo */
+  #menu-logo {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 56px;
+    font-weight: 900;
+    letter-spacing: -0.025em;
+    line-height: 1;
+    color: #222;
+    margin-bottom: 6px;
+    user-select: none;
+  }
+  #menu-logo .logo-s {
+    background: linear-gradient(135deg,
+                  #ff6b6b 0%,
+                  #ff6b6b 50%,
+                  #4dabf7 50%,
+                  #4dabf7 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    display: inline-block;
+    padding-right: 1px;
+  }
+
+  #menu-subtitle {
+    font-size: 12px;
+    color: var(--label-color);
+    margin-bottom: 18px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+
+  .section-label {
+    font-size: 10px;
+    color: var(--label-color);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    align-self: flex-start;
+    margin: 8px 4px 8px;
+  }
+
+  /* Mode grid */
+  .mode-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  .mode-list .mode-btn:nth-child(5) {
+    grid-column: span 2;
+  }
+
+  /* Menu action row */
+  .menu-actions {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    margin-top: 18px;
+    margin-bottom: 8px;
+  }
+  .menu-action-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #fff;
+    border: 1.5px solid var(--card-border);
+    border-radius: 12px;
+    padding: 11px 14px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #444;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform 0.12s, background 0.15s, border-color 0.15s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .menu-action-btn:active {
+    transform: scale(0.95);
+    background: #f5f5f5;
+  }
+  .menu-action-btn .action-icon { font-size: 18px; line-height: 1; }
+  .menu-action-btn.muted        { opacity: 0.65; }
+
+  /* --- Theme picker --- */
+  .theme-picker-label {
+    font-size: 11px;
+    color: var(--label-color);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    align-self: flex-start;
+    margin: 0 auto 6px;
+    width: 100%;
+    max-width: 360px;
+    padding-left: 4px;
+  }
+  .theme-picker {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 4px 16px;
+    width: 100%;
+    max-width: 360px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 18px;
+    scrollbar-width: thin;
+  }
+  .theme-picker::-webkit-scrollbar { height: 4px; }
+  .theme-picker::-webkit-scrollbar-thumb { background: #ccc; border-radius: 2px; }
+
+  .theme-card {
+    flex: 0 0 auto;
+    width: 86px;
+    background: #fff;
+    border: 2px solid var(--card-border);
+    border-radius: 14px;
+    padding: 10px 6px 8px;
+    text-align: center;
+    cursor: pointer;
+    scroll-snap-align: start;
+    touch-action: manipulation;
+    user-select: none;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+                border-color 0.15s, box-shadow 0.15s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .theme-card { transition: transform 0.12s, border-color 0.15s, box-shadow 0.15s; }
+  .theme-card:active { transform: scale(0.95); }
+  .theme-card.selected {
+    border-color: #222;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  }
+
+  .theme-preview {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2px;
+    margin-bottom: 6px;
+    font-size: 18px;
+    line-height: 1;
+  }
+  .theme-preview span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+  }
+  .theme-card-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .mode-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 4px;
+    padding: 14px 10px 12px;
+    min-height: 110px;
+    background: #fff;
+    border: 1.5px solid var(--card-border);
+    border-radius: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform 0.12s, border-color 0.15s, box-shadow 0.15s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .mode-btn:active {
+    transform: scale(0.95);
+    border-color: var(--accent);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  }
+  .mode-btn .mode-emoji { font-size: 28px; line-height: 1; }
+  .mode-btn .mode-text  { display: flex; flex-direction: column; flex: 1; align-items: center; }
+  .mode-btn .mode-name  { font-size: 13px; font-weight: 700; color: #222; }
+  .mode-btn .mode-desc  {
+    font-size: 10.5px;
+    color: var(--label-color);
+    margin-top: 3px;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .mode-list .mode-btn:nth-child(5) {
+    flex-direction: row;
+    min-height: 70px;
+    gap: 12px;
+    padding: 10px 16px;
+    text-align: left;
+  }
+  .mode-list .mode-btn:nth-child(5) .mode-text { align-items: flex-start; }
+  .mode-list .mode-btn:nth-child(5) .mode-desc { -webkit-line-clamp: 1; }
+
+  /* --- Intro overlay --- */
+  #intro-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--overlay-bg);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+  }
+  #intro-overlay.show { display: flex; }
+
+  #intro-box {
+    background: #fff;
+    border-radius: 20px;
+    padding: 32px 28px;
+    text-align: center;
+    max-width: 320px;
+    width: 90%;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+    animation: introIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  @keyframes introIn {
+    from { opacity: 0; transform: translateY(16px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+  }
+  @keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  #intro-overlay.show, #winner-overlay.show {
+    animation: overlayFadeIn 0.22s ease-out forwards;
+  }
+  .mode-btn {
+    animation: introIn 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+  }
+  .mode-btn:nth-child(1) { animation-delay: 0.04s; }
+  .mode-btn:nth-child(2) { animation-delay: 0.09s; }
+  .mode-btn:nth-child(3) { animation-delay: 0.14s; }
+  .mode-btn:nth-child(4) { animation-delay: 0.19s; }
+  .mode-btn:nth-child(5) { animation-delay: 0.24s; }
+  #intro-emoji { font-size: 50px; margin-bottom: 6px; }
+  #intro-name  { font-size: 22px; font-weight: 700; color: #222; margin-bottom: 8px; }
+  #intro-desc  { font-size: 14px; color: #555; line-height: 1.45; margin-bottom: 18px; }
+
+  /* --- Pre-game settings panel --- */
+  .settings-panel {
+    border-top: 1px solid var(--divider);
+    padding-top: 14px;
+    margin-bottom: 18px;
+    text-align: left;
+  }
+  .settings-label {
+    font-size: 10px;
+    color: var(--label-color);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+    margin-top: 4px;
+  }
+  .pill-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .pill-row button {
+    flex: 1;
+    background: #fff;
+    border: 1.5px solid var(--card-border);
+    border-radius: 9px;
+    padding: 8px 0;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #555;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.12s;
+  }
+  .pill-row button:active { transform: scale(0.95); }
+  .pill-row button.selected {
+    background: #222;
+    border-color: #222;
+    color: #fff;
+  }
+  .name-inputs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .name-inputs input {
+    flex: 1;
+    width: 100%;
+    background: #f6f6f6;
+    border: 1.5px solid var(--card-border);
+    border-radius: 9px;
+    padding: 9px 10px;
+    font-family: inherit;
+    font-size: 14px;
+    color: #222;
+    outline: none;
+    min-width: 0;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .name-inputs input:focus {
+    border-color: #222;
+    background: #fff;
+  }
+  .btn-primary {
+    background: #222; color: #fff; border: none; border-radius: 12px;
+    padding: 12px 30px; font-size: 16px; font-weight: 600;
+    cursor: pointer; touch-action: manipulation; transition: background 0.15s;
+    font-family: inherit;
+  }
+  .btn-primary  { transition: background 0.15s, transform 0.12s; }
+  .btn-primary:active { background: #444; transform: scale(0.95); }
+  .btn-secondary { transition: background 0.15s, transform 0.12s; }
+  .btn-secondary:active { transform: scale(0.95); }
+  .btn-secondary {
+    background: transparent; color: #555; border: 2px solid var(--card-border);
+    border-radius: 12px; padding: 10px 22px; font-size: 14px; font-weight: 600;
+    cursor: pointer; touch-action: manipulation; font-family: inherit;
+    margin-left: 8px;
+  }
+  .btn-secondary:active { background: #f0f0f0; transform: scale(0.95); }
+
+  /* ============================================================
+     GAME SCREEN (shared)
+     ============================================================ */
+  #game-screen {
+    height: 100dvh;
+    width: 100%;
+  }
+
+  .player-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 10px 16px;
+    position: relative;
+    touch-action: manipulation;
+    min-height: 0;
+  }
+  #player2-area { transform: rotate(180deg); }
+
+  .divider { height: 1px; background: var(--divider); flex-shrink: 0; }
+
+  #center-area {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 6px 10px;
+    min-height: 150px;
+  }
+
+  /* Score / pile counters */
+  .score-block {
+    display: flex; flex-direction: column; align-items: center; min-width: 50px;
+  }
+  .score-label {
+    font-size: 10px; color: var(--label-color);
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .score-value {
+    font-size: 36px; font-weight: 700; color: var(--score-color); line-height: 1;
+  }
+
+  .center-info {
+    display: flex; flex-direction: column; align-items: center;
+    font-size: 11px; color: var(--label-color);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .center-info .center-info-num {
+    font-size: 22px; font-weight: 700; color: #333; line-height: 1;
+    margin-top: 2px;
+  }
+
+  .mode-banner {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: var(--label-color);
+    white-space: nowrap;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  #player2-area .mode-banner { bottom: auto; top: 4px; }
+
+  /* --- Cards --- */
+  .card {
+    position: relative;
+    border-radius: 50%;
+    background: var(--card-bg);
+    border: 2px solid var(--card-border);
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+    flex-shrink: 0;
+    touch-action: manipulation;
+    transition: border-color 0.15s;
+    user-select: none;
+  }
+  .player-card { width: 158px; height: 158px; }
+  .center-card { width: 124px; height: 124px; }
+  .grid-card   { width: 100px; height: 100px; }
+
+  .card .symbol {
+    position: absolute;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transform-origin: center center;
+  }
+
+  .symbol.correct-hint {
+    outline: 2px solid rgba(255, 165, 0, 0.7);
+    border-radius: 4px;
+  }
+
+  /* Triple Lock grid */
+  #grid-screen { height: 100dvh; }
+
+  .grid-player-bar {
+    flex-shrink: 0;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: #fafafa;
+    border-bottom: 1px solid var(--divider);
+  }
+  #grid-bar-top { transform: rotate(180deg); border-bottom: none; border-top: 1px solid var(--divider); }
+  .grid-bar-name { font-size: 12px; color: var(--label-color); text-transform: uppercase; letter-spacing: 0.08em; }
+  .grid-bar-score { font-size: 26px; font-weight: 700; color: #222; }
+
+  #grid-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+  }
+  #grid-cards {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 8px;
+  }
+  .grid-card.claimed-1 { border-color: #4caf50 !important; opacity: 0.25; pointer-events: none; }
+  .grid-card.claimed-2 { border-color: #2196f3 !important; opacity: 0.25; pointer-events: none; }
+
+  /* ============================================================
+     ANIMATIONS  (all <= 400ms for snappy gameplay)
+     ============================================================ */
+  @keyframes correctBounce {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.10); }
+    65%  { transform: scale(0.96); }
+    85%  { transform: scale(1.02); }
+    100% { transform: scale(1); }
+  }
+  .card.correct-anim {
+    animation: correctBounce 0.35s cubic-bezier(0.34, 1.7, 0.5, 1) forwards;
+    border-color: var(--green) !important;
+  }
+
+  @keyframes shake {
+    0%   { transform: translateX(0); }
+    15%  { transform: translateX(-6px); }
+    35%  { transform: translateX(6px); }
+    55%  { transform: translateX(-6px); }
+    75%  { transform: translateX(4px); }
+    90%  { transform: translateX(-2px); }
+    100% { transform: translateX(0); }
+  }
+  .card.wrong-anim {
+    animation: shake 0.32s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+    border-color: var(--red) !important;
+  }
+
+  @keyframes flipCard {
+    0%   { transform: rotateY(0deg)   scale(1); }
+    50%  { transform: rotateY(90deg)  scale(0.92); }
+    100% { transform: rotateY(0deg)   scale(1); }
+  }
+  .card.flip-anim {
+    animation: flipCard 0.36s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+  }
+
+  /* --- Score pop --- */
+  @keyframes scorePop {
+    0%   { transform: scale(1);    color: var(--score-color); }
+    40%  { transform: scale(1.35); color: var(--green); }
+    100% { transform: scale(1);    color: var(--score-color); }
+  }
+  .score-value.pop, .grid-bar-score.pop {
+    animation: scorePop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: inline-block;
+  }
+
+  /* --- Confetti particles --- */
+  .confetti-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 5;
+  }
+  .confetti {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    font-size: 20px;
+    pointer-events: none;
+    will-change: transform, opacity;
+    animation: confettiFly 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  }
+  @keyframes confettiFly {
+    0%   { transform: translate(-50%, -50%) translate(0, 0) rotate(0deg) scale(0.6); opacity: 1; }
+    100% { transform:
+      translate(-50%, -50%)
+      translate(var(--cx), var(--cy))
+      rotate(var(--rot))
+      scale(1.05);
+      opacity: 0;
+    }
+  }
+
+  /* --- Winner overlay --- */
+  #winner-overlay {
+    position: fixed; inset: 0;
+    background: var(--overlay-bg);
+    display: none; align-items: center; justify-content: center; z-index: 100;
+  }
+  #winner-overlay.show { display: flex; }
+
+  @keyframes winnerIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  #winner-box {
+    background: #fff; border-radius: 20px; padding: 32px 36px;
+    text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+    animation: winnerIn 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    max-width: 320px; width: 90%;
+  }
+  #winner-trophy { font-size: 60px; margin-bottom: 10px; }
+  #winner-title  { font-size: 24px; font-weight: 700; margin-bottom: 14px; color: #222; }
+  #winner-scores { font-size: 16px; color: #555; margin-bottom: 24px; line-height: 1.7; }
+  #winner-scores strong { color: #222; }
+
+  /* --- Menu leader badge --- */
+  #menu-leader {
+    margin: -16px 0 14px;
+    font-size: 13px;
+    color: #444;
+    background: #fff;
+    border: 1.5px solid var(--card-border);
+    border-radius: 999px;
+    padding: 5px 12px;
+    display: none;
+    align-items: center;
+    gap: 6px;
+  }
+  #menu-leader.show { display: inline-flex; }
+  #menu-leader .trophy { font-size: 14px; }
+  #menu-leader strong { color: #222; }
+
+  .menu-stats-btn {
+    margin-top: 18px;
+    background: transparent;
+    border: 1.5px solid var(--card-border);
+    border-radius: 12px;
+    padding: 9px 22px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.15s, transform 0.12s;
+  }
+  .menu-stats-btn:active { transform: scale(0.96); background: #f0f0f0; }
+
+  /* --- Support row (Remove Ads + Tip jar) --- */
+  .support-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .support-btn {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: transparent;
+    border: 1px dashed var(--card-border);
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #777;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform 0.12s, background 0.15s, color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .support-btn:active {
+    transform: scale(0.95);
+    background: #f5f5f5;
+    color: #333;
+    border-color: #aaa;
+  }
+  .support-icon { font-size: 14px; line-height: 1; }
+
+  /* --- Ad modal (placeholder) --- */
+  #ad-overlay {
+    position: fixed; inset: 0;
+    background: var(--overlay-bg);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 400;
+  }
+  #ad-overlay.show {
+    display: flex;
+    animation: overlayFadeIn 0.22s ease-out forwards;
+  }
+  #ad-box {
+    background: #fff;
+    border-radius: 18px;
+    padding: 28px 24px 22px;
+    text-align: center;
+    max-width: 320px;
+    width: 90%;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+    animation: introIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  #ad-emoji { font-size: 48px; margin-bottom: 10px; }
+  #ad-title { font-size: 20px; font-weight: 700; color: #222; margin-bottom: 8px; }
+  #ad-desc  { font-size: 13px; color: #666; line-height: 1.45; margin-bottom: 18px; }
+  #ad-overlay .btn-primary   { margin-bottom: 8px; width: 100%; }
+  #ad-overlay .btn-secondary { width: 100%; }
+
+  /* --- Stats screen --- */
+  #stats-screen {
+    background: var(--bg);
+    overflow-y: auto;
+  }
+  .stats-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 14px 16px 8px;
+    gap: 12px;
+  }
+  .stats-back {
+    background: #fff;
+    border: 1.5px solid var(--card-border);
+    border-radius: 50%;
+    width: 36px; height: 36px;
+    font-size: 18px;
+    cursor: pointer;
+    color: #555;
+    touch-action: manipulation;
+    flex-shrink: 0;
+  }
+  .stats-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #222;
+  }
+  .stats-body {
+    flex: 1;
+    padding: 8px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+  }
+  .stats-footer {
+    flex-shrink: 0;
+    padding: 12px 16px 20px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .stats-card {
+    background: #fff;
+    border: 1.5px solid var(--card-border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    animation: introIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+  }
+  .stats-card:nth-child(1) { animation-delay: 0.02s; }
+  .stats-card:nth-child(2) { animation-delay: 0.07s; }
+  .stats-card:nth-child(3) { animation-delay: 0.12s; }
+  .stats-card:nth-child(4) { animation-delay: 0.17s; }
+
+  .stats-card-label {
+    font-size: 10px;
+    color: var(--label-color);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+  .stats-overview {
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+  }
+  .stats-overview .num { font-size: 28px; font-weight: 700; color: #222; line-height: 1; }
+  .stats-overview .lbl { font-size: 11px; color: var(--label-color); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .player-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    gap: 10px;
+  }
+  .player-row:last-child { border-bottom: none; }
+  .player-rank { font-size: 16px; flex-shrink: 0; width: 24px; text-align: center; }
+  .player-name { flex: 1; font-size: 14px; font-weight: 600; color: #222; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .player-stats { font-size: 12px; color: #666; flex-shrink: 0; }
+  .player-rate {
+    font-size: 13px; font-weight: 700; color: #222;
+    min-width: 44px; text-align: right; flex-shrink: 0;
+  }
+
+  .stats-mode-row {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 16px; color: #222;
+  }
+  .stats-mode-row .mode-emoji { font-size: 28px; }
+  .stats-mode-row strong { font-weight: 700; }
+
+  .stats-empty {
+    font-size: 13px; color: var(--label-color); text-align: center; padding: 8px 0;
+  }
+
+  .btn-primary.danger { background: #d32f2f; }
+  .btn-primary.danger:active { background: #b71c1c; }
+
+  /* --- Confirm overlay --- */
+  #confirm-overlay {
+    position: fixed; inset: 0;
+    background: var(--overlay-bg);
+    display: none; align-items: center; justify-content: center;
+    z-index: 300;
+  }
+  #confirm-overlay.show {
+    display: flex;
+    animation: overlayFadeIn 0.22s ease-out forwards;
+  }
+  #confirm-box {
+    background: #fff;
+    border-radius: 18px;
+    padding: 26px 24px 22px;
+    text-align: center;
+    max-width: 320px; width: 90%;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+    animation: introIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  #confirm-title { font-size: 18px; font-weight: 700; color: #222; margin-bottom: 8px; }
+  #confirm-desc  { font-size: 13px; color: #666; line-height: 1.45; margin-bottom: 18px; }
+  .confirm-actions { display: flex; justify-content: center; gap: 8px; }
+  .confirm-actions button { margin: 0; }
+
+  /* --- Mute toggle --- */
+  #mute-btn {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.92);
+    border: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    z-index: 250;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    touch-action: manipulation;
+    user-select: none;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s;
+  }
+  #mute-btn:active { transform: scale(0.95); }
+  #mute-btn.muted  { background: #f0f0f0; opacity: 0.85; }
+
+  /* --- Debug panel (hidden, 5-tap logo to open) --- */
+  #debug-panel {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 18, 22, 0.96);
+    color: #c8e6c9;
+    z-index: 600;
+    display: none;
+    flex-direction: column;
+    font-family: 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  #debug-panel.show {
+    display: flex;
+    animation: overlayFadeIn 0.22s ease-out forwards;
+  }
+  .debug-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: #0b0d10;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-bottom: 1px solid #2a2f36;
+  }
+  .debug-close {
+    background: transparent;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 50%;
+    width: 28px; height: 28px;
+    font-size: 16px;
+    cursor: pointer;
+    line-height: 1;
+    touch-action: manipulation;
+  }
+  #debug-content {
+    flex: 1;
+    overflow: auto;
+    padding: 12px 14px 24px;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #d6e3d8;
+  }
+  #debug-content .match-line { color: #ffd54f; font-weight: 700; }
+
+  #menu-logo { cursor: pointer; }
+
+  /* --- Status bar --- */
+  #status-bar {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.72); color: #fff;
+    padding: 8px 18px; border-radius: 20px; font-size: 14px;
+    pointer-events: none; opacity: 0;
+    transition: opacity 0.25s; z-index: 50;
+    white-space: nowrap;
+  }
+  #status-bar.visible { opacity: 1; }
+
+  /* --- Back button --- */
+  #back-btn {
+    position: fixed;
+    top: calc(50% - 14px);
+    left: 8px;
+    background: rgba(255,255,255,0.85);
+    border: 1px solid var(--card-border);
+    border-radius: 50%;
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; cursor: pointer; z-index: 30;
+    color: #555;
+    touch-action: manipulation;
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= MENU SCREEN ================= -->
+<div id="menu-screen" class="screen active">
+  <!-- Decorative looping background -->
+  <div class="menu-bg" aria-hidden="true">
+    <div class="bg-card bg-card-1">
+      <span style="top:18%;left:22%;font-size:20px;">🐶</span>
+      <span style="top:55%;left:60%;font-size:18px;">🌸</span>
+      <span style="top:30%;left:65%;font-size:16px;">⭐</span>
+      <span style="top:65%;left:25%;font-size:18px;">🍀</span>
+    </div>
+    <div class="bg-card bg-card-2">
+      <span style="top:25%;left:30%;font-size:18px;">🍕</span>
+      <span style="top:60%;left:55%;font-size:20px;">⚽</span>
+      <span style="top:20%;left:60%;font-size:16px;">🦋</span>
+      <span style="top:65%;left:22%;font-size:18px;">🎯</span>
+    </div>
+  </div>
+
+  <div class="menu-content">
+    <h1 id="menu-logo"><span class="logo-s">S</span>ymble</h1>
+    <div id="menu-subtitle">Two-player tap battles</div>
+    <div id="menu-leader"></div>
+
+    <div class="section-label">Choose a Mode</div>
+    <div class="mode-list" id="mode-list"></div>
+
+    <div class="section-label">Theme</div>
+    <div class="theme-picker" id="theme-picker"></div>
+
+    <div class="menu-actions">
+      <button class="menu-action-btn" id="open-stats-btn" type="button">
+        <span class="action-icon">📊</span>
+        <span class="action-label">Stats</span>
+      </button>
+      <button class="menu-action-btn" id="menu-sound-btn" type="button">
+        <span class="action-icon" id="menu-sound-icon">🔊</span>
+        <span class="action-label" id="menu-sound-label">Sound</span>
+      </button>
+    </div>
+
+    <div class="support-row">
+      <button class="support-btn" id="remove-ads-btn" type="button">
+        <span class="support-icon">✨</span>
+        <span>Remove Ads — $2.99</span>
+      </button>
+      <button class="support-btn" id="tip-btn" type="button">
+        <span class="support-icon">☕</span>
+        <span>Support Symble</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= STATS SCREEN ================= -->
+<div id="stats-screen" class="screen">
+  <div class="stats-header">
+    <button class="stats-back" id="stats-back-btn" type="button">←</button>
+    <div class="stats-title">Stats</div>
+  </div>
+  <div class="stats-body" id="stats-body"></div>
+  <div class="stats-footer">
+    <button class="btn-secondary" id="reset-stats-btn" type="button">Reset Stats</button>
+  </div>
+</div>
+
+<!-- ================= CONFIRM DIALOG ================= -->
+<div id="confirm-overlay">
+  <div id="confirm-box">
+    <div id="confirm-title">Reset all stats?</div>
+    <div id="confirm-desc">This will clear win counts, streaks, and mode plays for every player. This cannot be undone.</div>
+    <div class="confirm-actions">
+      <button class="btn-secondary" id="confirm-cancel" type="button">Cancel</button>
+      <button class="btn-primary danger" id="confirm-ok" type="button">Reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= GAME SCREEN (cards layout) ================= -->
+<div id="game-screen" class="screen">
+  <!-- Player 2 (top, rotated) -->
+  <div class="player-area" id="player2-area">
+    <div class="score-block">
+      <span class="score-label" id="score2-label">Score</span>
+      <span class="score-value" id="score2">0</span>
+    </div>
+    <div class="card player-card" id="card2"></div>
+    <div class="mode-banner" id="banner2"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div id="center-area">
+    <div class="center-info" id="center-info-left" style="visibility:hidden;">
+      <span>Stack</span>
+      <span class="center-info-num" id="center-count">0</span>
+    </div>
+    <div class="card center-card" id="center-card"></div>
+    <div class="center-info" id="center-info-right" style="visibility:hidden;"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Player 1 (bottom) -->
+  <div class="player-area" id="player1-area">
+    <div class="card player-card" id="card1"></div>
+    <div class="score-block">
+      <span class="score-label" id="score1-label">Score</span>
+      <span class="score-value" id="score1">0</span>
+    </div>
+    <div class="mode-banner" id="banner1"></div>
+  </div>
+
+  <div id="back-btn">×</div>
+</div>
+
+<!-- ================= GRID SCREEN (Triple Lock) ================= -->
+<div id="grid-screen" class="screen">
+  <div class="grid-player-bar" id="grid-bar-top">
+    <span class="grid-bar-name">Player 2</span>
+    <span class="grid-bar-score" id="grid-score2">0</span>
+  </div>
+
+  <div id="grid-area">
+    <div id="grid-cards"></div>
+  </div>
+
+  <div class="grid-player-bar" id="grid-bar-bottom">
+    <span class="grid-bar-name">Player 1</span>
+    <span class="grid-bar-score" id="grid-score1">0</span>
+  </div>
+
+  <div id="back-btn-grid" style="position:fixed; top:8px; right:8px; background:rgba(255,255,255,0.9); border:1px solid var(--card-border); border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; z-index:30; color:#555;">×</div>
+</div>
+
+<!-- ================= INTRO OVERLAY ================= -->
+<div id="intro-overlay">
+  <div id="intro-box">
+    <div id="intro-emoji"></div>
+    <div id="intro-name"></div>
+    <div id="intro-desc"></div>
+
+    <div class="settings-panel">
+      <div class="settings-label">Rounds</div>
+      <div class="pill-row" id="rounds-row">
+        <button type="button" data-val="5">5</button>
+        <button type="button" data-val="10">10</button>
+        <button type="button" data-val="20">20</button>
+        <button type="button" data-val="unlimited">∞</button>
+      </div>
+
+      <div class="settings-label">Symbols per card</div>
+      <div class="pill-row" id="symbols-row">
+        <button type="button" data-val="6">6</button>
+        <button type="button" data-val="8">8</button>
+      </div>
+
+      <div class="settings-label">Players</div>
+      <div class="name-inputs">
+        <input id="name1" type="text" maxlength="14" autocomplete="off" placeholder="Player 1">
+        <input id="name2" type="text" maxlength="14" autocomplete="off" placeholder="Player 2">
+      </div>
+    </div>
+
+    <button class="btn-primary" id="intro-start">Start</button>
+    <button class="btn-secondary" id="intro-back">Back</button>
+  </div>
+</div>
+
+<!-- ================= WINNER OVERLAY ================= -->
+<div id="winner-overlay">
+  <div id="winner-box">
+    <div id="winner-trophy">🏆</div>
+    <div id="winner-title"></div>
+    <div id="winner-scores"></div>
+    <button class="btn-primary" id="play-again-btn">Play Again</button>
+    <button class="btn-secondary" id="menu-btn">Menu</button>
+  </div>
+</div>
+
+<div id="mute-btn" title="Toggle sound">🔊</div>
+<div id="status-bar"></div>
+
+<!-- ================= AD MODAL (placeholder) ================= -->
+<div id="ad-overlay">
+  <div id="ad-box">
+    <div id="ad-emoji">🎁</div>
+    <div id="ad-title">Unlock the next theme</div>
+    <div id="ad-desc">Watch a short ad to support the developer and unlock bonus content.</div>
+    <button class="btn-primary" id="ad-watch" type="button">Watch Ad</button>
+    <button class="btn-secondary" id="ad-dismiss" type="button">No thanks</button>
+  </div>
+</div>
+
+<!-- ================= DEBUG PANEL (5-tap logo to open) ================= -->
+<div id="debug-panel">
+  <div class="debug-header">
+    <span>GameState · Debug</span>
+    <button class="debug-close" id="debug-close" type="button">×</button>
+  </div>
+  <pre id="debug-content"></pre>
+</div>
+
+<script>
+// ============================================================
+// --- Constants ---
+// ============================================================
+const DEV_MODE          = false;
+const MIN_SYMBOL_SIZE   = 18;
+const MAX_SYMBOL_SIZE   = 30;
+
+// Mode-specific tunables
+const TRIPLE_LOCK_GRID_SIZE = 9;      // 3x3
+const HOT_CARD_HAND_SIZE    = 10;     // each player
+
+// --- User-configurable settings (persisted to localStorage) ---
+const SETTINGS_KEY = 'symble_settings';
+const settings = {
+  rounds: 'unlimited',           // 5 | 10 | 20 | 'unlimited'
+  symbolsPerCard: 8,             // 6 (PG(2,5)) or 8 (PG(2,7))
+  playerNames: ['Player 1', 'Player 2'],
+};
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      if (s.rounds !== undefined)          settings.rounds         = s.rounds;
+      if (s.symbolsPerCard === 6 || s.symbolsPerCard === 8)
+                                            settings.symbolsPerCard = s.symbolsPerCard;
+      if (Array.isArray(s.playerNames) && s.playerNames.length === 2)
+                                            settings.playerNames    = s.playerNames.map(n => String(n).slice(0, 14) || 'Player');
+    }
+  } catch (e) {}
+}
+function saveSettings() {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+}
+function name(idx) { return settings.playerNames[idx] || `Player ${idx + 1}`; }
+function cardOrder() { return settings.symbolsPerCard - 1; }
+// roundLimitReached is defined below — it consults GameState.config.rounds and GameState.roundsPlayed.
+
+// ============================================================
+// --- Theme system (5 sets of 57 emoji each) ---
+// ============================================================
+const THEMES = {
+  default: {
+    name: 'Mixed', icon: '🎲',
+    symbols: [
+      '🦝','🐈','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯',
+      '🦁','🐮','🐷','🐊','🦑','🐵','🦗','🐝','🐞','🦞',
+      '🐠','🐬','🦈','🦜','🪷','🌻','🌺','🌿','🪸','🌴',
+      '🍁','🌾','🫒','🍊','🍋','🍇','🍓','🍒','🥙','🍔',
+      '🎸','🎺','🎻','🎹','🎨','🎭','🎪','🎳','🏐','🏀',
+      '🏈','🎾','🏸','🥊','⛷️','🛸','🔷'
+    ],
+  },
+  animals: {
+    name: 'Animals', icon: '🦊',
+    symbols: [
+      '🦝','🐈','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯',
+      '🦁','🐮','🐷','🪿','🐵','🐔','🐧','🐦','🐤','🦆',
+      '🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦗',
+      '🐌','🐞','🐜','🐢','🐍','🦎','🦖','🦕','🐳','🐬',
+      '🐟','🐠','🐡','🦈','🐚','🦑','🦭','🦞','🦦','🦥',
+      '🦓','🦒','🐘','🦏','🦛','🐊','🦘'
+    ],
+  },
+  food: {
+    name: 'Food', icon: '🥙',
+    symbols: [
+      '🫒','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈',
+      '🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦',
+      '🥬','🥒','🌶️','🌽','🥕','🧄','🧅','🥔','🍠','🥐',
+      '🥯','🍞','🥖','🧀','🥚','🍳','🥞','🧇','🥓','🥩',
+      '🍗','🍖','🌭','🍔','🍟','🥙','🥪','🌮','🌯','🥗',
+      '🍝','🍣','🍱','🍜','🍙','🍩','🍰'
+    ],
+  },
+  nature: {
+    name: 'Nature', icon: '🌳',
+    symbols: [
+      '🪷','🌺','🌻','🌷','🌹','🥀','🌼','💐','🌱','🌿',
+      '☘️','🪻','🎍','🎋','🍃','🍂','🍁','🍄','🌾','💮',
+      '🪸','🌴','🌳','🌲','🪴','🌍','🌎','🌏','🌑','🌒',
+      '🌓','🌔','🌕','🌖','🌗','🌘','🌙','🌚','🌛','🌜',
+      '🌞','🔷','🌟','✨','⚡','🌋','🫧','🌊','🌬️','☃️',
+      '⛄','🌥️','☁️','⛅','🌤️','🌧️','⛈️'
+    ],
+  },
+  sports: {
+    name: 'Sports', icon: '🏐',
+    symbols: [
+      '🪀','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱',
+      '🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','🪁',
+      '🏹','🎣','🤿','🥊','🥋','🎽','🛹','🛼','🛷','⛸️',
+      '🥌','🎿','⛷️','🏂','🪂','🏋️','🤼','🤸','⛹️','🤺',
+      '🤾','🏌️','🏇','🧘','🏄','🏊','🤽','🚣','🧗','🚵',
+      '🚴','🏆','🥇','🥈','🥉','🎖️','🏅'
+    ],
+  },
+};
+
+let currentThemeId = 'default';
+let SYMBOLS = THEMES.default.symbols;
+
+function setTheme(id) {
+  if (!THEMES[id]) return;
+  currentThemeId = id;
+  SYMBOLS = THEMES[id].symbols;
+  try { localStorage.setItem('symble_theme', id); } catch (e) {}
+  updateThemePickerUI();
+}
+
+// ============================================================
+// --- Sound system (Web Audio API, all synthesized) ---
+// ============================================================
+const Sound = {
+  ctx: null,
+  master: null,
+  muted: false,
+  STORAGE_KEY: 'symble_muted',
+
+  init() {
+    try { this.muted = localStorage.getItem(this.STORAGE_KEY) === '1'; } catch(e) {}
+  },
+  ensureCtx() {
+    if (!this.ctx) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      try {
+        this.ctx = new C();
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 0.6;
+        this.master.connect(this.ctx.destination);
+      } catch(e) { return null; }
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  },
+  setMuted(m) {
+    this.muted = !!m;
+    try { localStorage.setItem(this.STORAGE_KEY, this.muted ? '1' : '0'); } catch(e) {}
+    updateMuteUI();
+  },
+  toggle() { this.setMuted(!this.muted); return this.muted; },
+
+  // Single tone with envelope, optional pitch slide
+  tone({ freq, slideTo = null, duration = 0.15, type = 'sine',
+         gain = 0.2, startTime = 0, attack = 0.005 }) {
+    const ctx = this.ensureCtx();
+    if (!ctx || this.muted) return;
+    const t0 = ctx.currentTime + startTime;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    if (slideTo !== null) {
+      osc.frequency.exponentialRampToValueAtTime(Math.max(slideTo, 0.0001), t0 + duration);
+    }
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(g).connect(this.master);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.05);
+  },
+
+  // Short noise burst (used for thud body)
+  noise({ duration = 0.12, gain = 0.15, startTime = 0, lowpass = 400 }) {
+    const ctx = this.ensureCtx();
+    if (!ctx || this.muted) return;
+    const t0 = ctx.currentTime + startTime;
+    const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * duration), ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'lowpass'; filt.frequency.value = lowpass;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    src.connect(filt).connect(g).connect(this.master);
+    src.start(t0);
+    src.stop(t0 + duration + 0.02);
+  },
+
+  // --- Sound effects ---
+  correctTap() {
+    // Bright two-note chime
+    this.tone({ freq: 880,  slideTo: 1320, duration: 0.14, type: 'sine',     gain: 0.18 });
+    this.tone({ freq: 1760, duration: 0.16, type: 'triangle', gain: 0.10, startTime: 0.04 });
+  },
+  wrongTap() {
+    // Low dull thud
+    this.tone({ freq: 140, slideTo: 70, duration: 0.22, type: 'triangle', gain: 0.22 });
+    this.noise({ duration: 0.08, gain: 0.10, lowpass: 350 });
+  },
+  roundWon() {
+    // C-E-G ascending
+    const notes = [523.25, 659.25, 783.99];
+    notes.forEach((f, i) => {
+      this.tone({ freq: f, duration: 0.16, type: 'triangle',
+                  gain: 0.18, startTime: i * 0.07 });
+    });
+  },
+  gameOver() {
+    // C-E-G-C jingle + sparkle on top
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((f, i) => {
+      this.tone({ freq: f, duration: 0.22, type: 'triangle',
+                  gain: 0.18, startTime: i * 0.11 });
+    });
+    this.tone({ freq: 1568, duration: 0.45, type: 'sine',
+                gain: 0.14, startTime: 0.5 });
+    this.tone({ freq: 2093, duration: 0.35, type: 'sine',
+                gain: 0.10, startTime: 0.62 });
+  },
+  menuClick() {
+    this.tone({ freq: 720, slideTo: 920, duration: 0.05,
+                type: 'square', gain: 0.06, attack: 0.001 });
+  },
+};
+
+// ============================================================
+// --- Stats system ---
+// ============================================================
+const STATS_KEY = 'symble_stats';
+const Stats = {
+  data: {
+    totalRounds: 0,        // cumulative successful matches across all games
+    totalGames: 0,         // completed games
+    modePlays: {},         // { avalanche: 3, drain: 5, ... }
+    players: {},           // { "Alice": { wins, games, currentStreak, longestStreak } }
+  },
+  load() {
+    try {
+      const raw = localStorage.getItem(STATS_KEY);
+      if (raw) {
+        const s = JSON.parse(raw);
+        Object.assign(this.data, s);
+        if (!this.data.modePlays) this.data.modePlays = {};
+        if (!this.data.players)   this.data.players   = {};
+      }
+    } catch (e) {}
+  },
+  save() {
+    try { localStorage.setItem(STATS_KEY, JSON.stringify(this.data)); } catch (e) {}
+  },
+  ensurePlayer(n) {
+    if (!this.data.players[n]) {
+      this.data.players[n] = { wins: 0, games: 0, currentStreak: 0, longestStreak: 0 };
+    }
+    return this.data.players[n];
+  },
+  recordGame({ mode, names, winnerIdx, rounds }) {
+    this.data.totalGames++;
+    this.data.totalRounds += (rounds | 0);
+    this.data.modePlays[mode] = (this.data.modePlays[mode] || 0) + 1;
+    const p0 = this.ensurePlayer(names[0]);
+    const p1 = this.ensurePlayer(names[1]);
+    p0.games++; p1.games++;
+    if (winnerIdx === 0) {
+      p0.wins++; p0.currentStreak++; p1.currentStreak = 0;
+      if (p0.currentStreak > p0.longestStreak) p0.longestStreak = p0.currentStreak;
+    } else if (winnerIdx === 1) {
+      p1.wins++; p1.currentStreak++; p0.currentStreak = 0;
+      if (p1.currentStreak > p1.longestStreak) p1.longestStreak = p1.currentStreak;
+    } else {
+      // tie — both streaks break
+      p0.currentStreak = 0;
+      p1.currentStreak = 0;
+    }
+    this.save();
+  },
+  reset() {
+    this.data = { totalRounds: 0, totalGames: 0, modePlays: {}, players: {} };
+    this.save();
+  },
+  // --- Aggregates ---
+  favoriteMode() {
+    let best = null, bestN = 0;
+    for (const id in this.data.modePlays) {
+      if (this.data.modePlays[id] > bestN) { bestN = this.data.modePlays[id]; best = id; }
+    }
+    return best ? { id: best, count: bestN } : null;
+  },
+  longestStreak() {
+    let bestName = null, bestN = 0;
+    for (const n in this.data.players) {
+      const p = this.data.players[n];
+      if (p.longestStreak > bestN) { bestN = p.longestStreak; bestName = n; }
+    }
+    return bestN > 0 ? { name: bestName, streak: bestN } : null;
+  },
+  leadingPlayer() {
+    // Player with most wins; only meaningful if ≥2 players exist
+    const names = Object.keys(this.data.players);
+    if (names.length < 2) return null;
+    let bestName = null, bestW = -1;
+    for (const n of names) {
+      if (this.data.players[n].wins > bestW) { bestW = this.data.players[n].wins; bestName = n; }
+    }
+    if (bestW <= 0) return null;
+    return { name: bestName, wins: bestW };
+  },
+  leaderboard() {
+    return Object.keys(this.data.players)
+      .map(n => ({ name: n, ...this.data.players[n] }))
+      .sort((a, b) => b.wins - a.wins || b.games - a.games);
+  },
+};
+
+// ============================================================
+// --- MonetizationManager
+// Centralizes all ad / IAP / tip trigger logic.
+// Game logic should NEVER call ad SDKs directly — only this module.
+// Drop in a real provider (AdMob, AdSense H5, IronSource, RevenueCat,
+// Stripe, Play Billing) by replacing the marked TODO sections below.
+// ============================================================
+const MonetizationManager = {
+  STORAGE_KEY: 'symble_monetization',
+
+  // --- Tunables ---
+  AD_FREQUENCY: 3,                                   // show interstitial every N game-overs
+  TIP_URL:      'https://example.com/symble-tip',    // TODO: replace with real Ko-fi / BMC / Stripe link
+  REMOVE_ADS_PRICE: '$2.99',                         // display only — real price comes from store SDK
+
+  state: {
+    adsRemoved:    false,                            // set true after IAP success
+    gameOverCount: 0,                                // total game-overs since install
+  },
+
+  init() {
+    try {
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      if (raw) Object.assign(this.state, JSON.parse(raw));
+    } catch (e) {}
+    // TODO: query the store SDK for entitlements on launch and reconcile state.adsRemoved.
+    //   RevenueCat:  Purchases.getCustomerInfo() → entitlements.active['no_ads']
+    //   Play Billing: queryPurchasesAsync(INAPP) → check 'remove_ads' SKU
+    //   StoreKit:    Transaction.currentEntitlements
+  },
+  save() {
+    try { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.state)); } catch (e) {}
+  },
+
+  // ---------- Lifecycle hooks ----------
+  // Called from showWinner() — every game-over, exactly once.
+  onGameOver() {
+    if (this.state.adsRemoved) return false;
+    this.state.gameOverCount++;
+    this.save();
+    if (this.state.gameOverCount % this.AD_FREQUENCY === 0) {
+      // Slight delay so the winner overlay lands first
+      setTimeout(() => this.showAdModal(), 1500);
+      return true;
+    }
+    return false;
+  },
+
+  // ---------- Ad modal ----------
+  showAdModal() {
+    if (this.state.adsRemoved) return;
+    document.getElementById('ad-overlay').classList.add('show');
+    // TODO: pre-load the rewarded ad creative here so showRewarded() is instant.
+    //   AdMob:     window.admob?.rewarded.load({ adUnitId: '...' })
+    //   AdSense H5: rewardedSlot.load()
+    //   IronSource: IronSource.loadRewardedVideo()
+  },
+  hideAdModal() {
+    document.getElementById('ad-overlay').classList.remove('show');
+  },
+
+  // ---------- Rewarded ad flow ----------
+  // Called when user clicks "Watch Ad" inside the modal.
+  watchAd(onComplete) {
+    console.log('[MonetizationManager] watchAd() — placeholder, no real ad SDK wired');
+    // TODO: replace this stub with a real rewarded-ad call.
+    //   AdMob (Capacitor / Cordova):
+    //     await window.admob.rewarded.load({ adUnitId });
+    //     const result = await window.admob.rewarded.show();
+    //     if (result.rewarded) grantReward();
+    //   AdSense H5 / Google Ad Manager rewarded:
+    //     googletag.pubads().addEventListener('rewardedSlotGranted', grantReward);
+    //   IronSource / Unity Ads:
+    //     IronSource.showRewardedVideo(); listen for onRewardedVideoAdRewarded
+    //   RevenueCat ad-mediation: Purchases.showAd()
+    //
+    // For now: fake a 600ms ad and "complete" successfully.
+    setTimeout(() => {
+      console.log('[MonetizationManager] ad finished — granting reward');
+      // TODO: grant the actual reward here (unlock theme, add coins, extra life…)
+      //   For the spec's "unlock next theme" reward, set a flag in localStorage and
+      //   reveal a locked theme-card on the menu.
+      this.hideAdModal();
+      if (typeof onComplete === 'function') onComplete();
+    }, 600);
+  },
+
+  // ---------- IAP: Remove Ads ----------
+  purchaseRemoveAds() {
+    console.log('[MonetizationManager] purchaseRemoveAds() — placeholder, no real IAP wired');
+    // TODO: replace with a real one-time non-consumable purchase.
+    //   RevenueCat:    await Purchases.purchasePackage(noAdsPackage)
+    //   Play Billing:  billingClient.launchBillingFlow({ skuDetails: removeAdsSku })
+    //   StoreKit 2:    try await product.purchase()
+    //   Stripe Checkout (web):
+    //     fetch('/api/checkout', { method: 'POST', body: JSON.stringify({sku:'remove_ads'}) })
+    //       .then(r => r.json()).then(({ url }) => location.href = url);
+    //
+    // Demo: immediately mark as purchased.
+    this.state.adsRemoved = true;
+    this.save();
+    updateMonetizationUI();
+    showStatus('Thanks! Ads removed.', 1800);
+  },
+
+  // ---------- Tip jar ----------
+  openTipJar() {
+    console.log('[MonetizationManager] openTipJar() →', this.TIP_URL);
+    // TODO: swap TIP_URL for a real Ko-fi / Buy Me a Coffee / Stripe / Lightning link,
+    // or call an in-app consumable (RevenueCat tip products, Play Billing consumables).
+    window.open(this.TIP_URL, '_blank', 'noopener');
+  },
+};
+
+function updateMonetizationUI() {
+  const removeAdsBtn = document.getElementById('remove-ads-btn');
+  if (removeAdsBtn) {
+    removeAdsBtn.style.display = MonetizationManager.state.adsRemoved ? 'none' : '';
+  }
+}
+
+// ============================================================
+// --- Debug panel (5-tap logo to toggle) ---
+// ============================================================
+const debugState = { visible: false, taps: 0, lastTap: 0 };
+
+function toggleDebugPanel() {
+  debugState.visible = !debugState.visible;
+  document.getElementById('debug-panel').classList.toggle('show', debugState.visible);
+  if (debugState.visible) updateDebugPanel();
+}
+
+function symLabel(idx) {
+  if (typeof idx !== 'number' || idx < 0) return null;
+  return `${idx}:${SYMBOLS[idx]}`;
+}
+
+function summarizeCard(card) {
+  if (!card) return null;
+  return card.map(i => symLabel(i)).join(' ');
+}
+
+function summarizeModeData(d) {
+  const out = {};
+  for (const k in d) {
+    const v = d[k];
+    if (Array.isArray(v) && v.length && Array.isArray(v[0])) {
+      out[k] = `[${v.length} cards]`;
+    } else if (Array.isArray(v) && v.length && typeof v[0] === 'number') {
+      out[k] = summarizeCard(v);
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+function describeMatchHints(hints) {
+  if (!hints) return null;
+  if (hints.triples) {
+    return {
+      triples: hints.triples.map(t => ({
+        symbol: symLabel(t.symbol),
+        cards:  t.cards,
+      })),
+    };
+  }
+  const out = {};
+  for (const k in hints) {
+    const v = hints[k];
+    out[k] = (typeof v === 'number') ? symLabel(v) : v;
+  }
+  return out;
+}
+
+function updateDebugPanel() {
+  const el = document.getElementById('debug-content');
+  if (!el) return;
+
+  const view = {
+    mode:         GameState.mode,
+    layout:       GameState.layout,
+    config:       GameState.config,
+    banner:       GameState.banner + (GameState.bannerStat ? ` · ${GameState.bannerStat}` : ''),
+    scores:       GameState.scores,
+    roundsPlayed: GameState.roundsPlayed,
+    roundLimit:   GameState.config.rounds,
+    centerInfo:   GameState.centerInfo,
+    showCenter:   GameState.showCenterCard,
+    cards: {
+      p1:     summarizeCard(GameState.cards.p1),
+      p2:     summarizeCard(GameState.cards.p2),
+      center: summarizeCard(GameState.cards.center),
+      grid:   GameState.cards.grid ? `[${GameState.cards.grid.length} cards]` : null,
+    },
+    modeData:     summarizeModeData(GameState.modeData),
+  };
+
+  const meta = `theme: ${currentThemeId}    muted: ${Sound.muted}    inputLock: ${inputLock}\n` +
+               `players: ${name(0)} vs ${name(1)}\n\n`;
+
+  let matchInfo = '';
+  if (modeHandler && modeHandler.matchHints) {
+    const hints = describeMatchHints(modeHandler.matchHints(GameState));
+    if (hints) {
+      matchInfo = '\n\n=== CORRECT MATCH(ES) ===\n' + JSON.stringify(hints, null, 2);
+    } else {
+      matchInfo = '\n\n=== CORRECT MATCH(ES) ===\n(no active match)';
+    }
+  }
+
+  el.textContent = meta + JSON.stringify(view, null, 2) + matchInfo;
+}
+
+function updateMuteUI() {
+  const btn = document.getElementById('mute-btn');
+  if (btn) {
+    btn.textContent = Sound.muted ? '🔇' : '🔊';
+    btn.classList.toggle('muted', Sound.muted);
+  }
+  const menuBtn   = document.getElementById('menu-sound-btn');
+  const menuIcon  = document.getElementById('menu-sound-icon');
+  const menuLabel = document.getElementById('menu-sound-label');
+  if (menuBtn) {
+    menuBtn.classList.toggle('muted', Sound.muted);
+    if (menuIcon)  menuIcon.textContent  = Sound.muted ? '🔇' : '🔊';
+    if (menuLabel) menuLabel.textContent = Sound.muted ? 'Sound Off' : 'Sound On';
+  }
+}
+
+// ============================================================
+// --- Mode Definitions ---
+// ============================================================
+const MODES = [
+  { id: 'avalanche',  name: 'Avalanche',     emoji: '❄️',
+    desc: 'Match your card to the center pile to grab cards. Most cards wins.' },
+  { id: 'drain',      name: 'Drain',         emoji: '💧',
+    desc: 'Match your top card to the center to dump it. First to empty their hand wins.' },
+  { id: 'hot_card',   name: 'Hot Card',      emoji: '🔥',
+    desc: 'Spot a match on your opponent\'s card and throw yours onto theirs.' },
+  { id: 'triple_lock',name: 'Triple Lock',   emoji: '🔒',
+    desc: 'Find the symbol shared by three cards in the grid to claim them.' },
+  { id: 'pass_curse', name: 'Pass the Curse',emoji: '🎴',
+    desc: 'Match the center to your opponent\'s card to dump the curse on them.' },
+];
+
+// ============================================================
+// --- Card Generation (PG(2,7)) ---
+// ============================================================
+function generateAllCards(N) {
+  const allCards = [];
+  const SLOPE_INF_BASE = N * N;       // 49 (N=7) or 25 (N=5)
+  const VERT_INF       = N * N + N;   // 56 (N=7) or 30 (N=5)
+  for (let s = 0; s < N; s++) {
+    for (let b = 0; b < N; b++) {
+      const card = [];
+      for (let x = 0; x < N; x++) {
+        const y = (s * x + b) % N;
+        card.push(x * N + y);
+      }
+      card.push(SLOPE_INF_BASE + s);
+      allCards.push(card);
+    }
+  }
+  for (let c = 0; c < N; c++) {
+    const card = [];
+    for (let y = 0; y < N; y++) card.push(c * N + y);
+    card.push(VERT_INF);
+    allCards.push(card);
+  }
+  const infCard = [];
+  for (let s = 0; s < N; s++) infCard.push(SLOPE_INF_BASE + s);
+  infCard.push(VERT_INF);
+  allCards.push(infCard);
+  return allCards;
+}
+
+function verifyCardMath(cards) {
+  let ok = true;
+  for (let i = 0; i < cards.length; i++) {
+    for (let j = i + 1; j < cards.length; j++) {
+      const shared = cards[i].filter(s => cards[j].includes(s));
+      if (shared.length !== 1) { ok = false; break; }
+    }
+    if (!ok) break;
+  }
+  console.assert(ok, 'Card math verification FAILED');
+  if (ok) console.log('✓ Card math verified');
+}
+
+// ============================================================
+// --- Utilities ---
+// ============================================================
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function rand(min, max)    { return Math.random() * (max - min) + min; }
+function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
+
+function findShared(cardA, cardB) {
+  return cardA.find(s => cardB.includes(s));
+}
+
+// ============================================================
+// --- Rendering helpers ---
+// ============================================================
+function placeSymbolsOnCard(cardEl, symbolIndices, cardDiameter, hintMatchSymbol) {
+  cardEl.innerHTML = '';
+  const R = cardDiameter / 2;
+  const margin = 4;
+  const placed = [];
+
+  for (let i = 0; i < symbolIndices.length; i++) {
+    const idx = symbolIndices[i];
+    const emoji = SYMBOLS[idx];
+    const size = randInt(MIN_SYMBOL_SIZE, MAX_SYMBOL_SIZE);
+    const half = size / 2;
+    const maxR = R - margin - half;
+
+    let cx, cy, tries = 0;
+    do {
+      const angle = rand(0, 2 * Math.PI);
+      const dist  = rand(0, maxR);
+      cx = R + dist * Math.cos(angle);
+      cy = R + dist * Math.sin(angle);
+      tries++;
+    } while (tries < 40 && placed.some(p => Math.hypot(p.cx - cx, p.cy - cy) < (p.half + half + 2)));
+    placed.push({ cx, cy, half });
+
+    const el = document.createElement('span');
+    el.textContent = emoji;
+    el.className = 'symbol';
+    el.style.fontSize = size + 'px';
+    el.style.left = (cx - half) + 'px';
+    el.style.top  = (cy - half) + 'px';
+    el.style.transform = `rotate(${randInt(-30, 30)}deg)`;
+    el.dataset.symbolIdx = idx;
+    if (DEV_MODE && idx === hintMatchSymbol) el.classList.add('correct-hint');
+    cardEl.appendChild(el);
+  }
+}
+
+function animateCard(cardEl, type) {
+  cardEl.classList.remove('correct-anim', 'wrong-anim');
+  void cardEl.offsetWidth;
+  cardEl.classList.add(type === 'correct' ? 'correct-anim' : 'wrong-anim');
+  if (type === 'correct') { Sound.correctTap(); GameState.roundsPlayed++; }
+  else                    { Sound.wrongTap(); }
+  cardEl.addEventListener('animationend', () => {
+    cardEl.classList.remove('correct-anim', 'wrong-anim');
+  }, { once: true });
+}
+
+// --- Confetti burst from a card ---
+function burstConfetti(cardEl, symbolIdx) {
+  if (!cardEl) return;
+  let layer = cardEl.querySelector('.confetti-layer');
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.className = 'confetti-layer';
+    cardEl.appendChild(layer);
+  }
+  const palette = (typeof symbolIdx === 'number' && symbolIdx >= 0)
+    ? [SYMBOLS[symbolIdx], '✨', '⭐', '💥', '🎉']
+    : ['✨', '⭐', '💥', '🎉', '🎊'];
+  const N_PARTS = 14;
+  for (let i = 0; i < N_PARTS; i++) {
+    const p = document.createElement('span');
+    p.className = 'confetti';
+    p.textContent = palette[i % palette.length];
+    const angle = (Math.PI * 2 * i) / N_PARTS + (Math.random() - 0.5) * 0.4;
+    const dist  = 60 + Math.random() * 40;
+    p.style.setProperty('--cx',  Math.cos(angle) * dist + 'px');
+    p.style.setProperty('--cy',  Math.sin(angle) * dist + 'px');
+    p.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+    p.style.fontSize = (14 + Math.random() * 10) + 'px';
+    layer.appendChild(p);
+    setTimeout(() => p.remove(), 650);
+  }
+}
+
+// --- Score pop animation ---
+function popScore(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.classList.remove('pop');
+  void el.offsetWidth;
+  el.classList.add('pop');
+}
+
+function flipAnimEl(el, cb) {
+  el.classList.remove('flip-anim');
+  void el.offsetWidth;
+  el.classList.add('flip-anim');
+  el.addEventListener('animationend', () => {
+    el.classList.remove('flip-anim');
+    cb && cb();
+  }, { once: true });
+}
+
+function showStatus(msg, ms = 1200) {
+  const bar = document.getElementById('status-bar');
+  bar.textContent = msg;
+  bar.classList.add('visible');
+  clearTimeout(bar._t);
+  bar._t = setTimeout(() => bar.classList.remove('visible'), ms);
+}
+
+// ============================================================
+// --- GameState (single source of truth) ---
+// ============================================================
+let allCards = [];
+let modeHandler = null;
+let inputLock = false;
+
+const GameState = {
+  mode: null,
+  layout: 'menu',                // 'menu' | 'two-player' | 'grid' | 'stats'
+  config: {                      // snapshotted at game start
+    rounds: 'unlimited',
+    symbolsPerCard: 8,
+    playerNames: ['Player 1', 'Player 2'],
+    theme: 'default',
+  },
+  banner: '',
+  bannerStat: '',
+  scores: [0, 0],
+  cards: { p1: null, p2: null, center: null, grid: null },
+  centerInfo: null,              // null | { label, count }
+  showCenterCard: true,
+  modeData: {},
+  roundsPlayed: 0,
+  winner: null,
+};
+
+function snapshotConfig() {
+  return {
+    rounds: settings.rounds,
+    symbolsPerCard: settings.symbolsPerCard,
+    playerNames: settings.playerNames.slice(),
+    theme: currentThemeId,
+  };
+}
+
+function roundLimitReached() {
+  const r = GameState.config.rounds;
+  if (r === 'unlimited') return false;
+  return GameState.roundsPlayed >= parseInt(r, 10);
+}
+
+// Cache to avoid re-shuffling visible card layout on every render
+const lastRender = { p1: null, p2: null, center: null, gridSig: '' };
+function resetRenderCache() {
+  lastRender.p1 = null;
+  lastRender.p2 = null;
+  lastRender.center = null;
+  lastRender.gridSig = '';
+}
+
+// ============================================================
+// --- Mode handlers — pure operations on GameState, no DOM ---
+// ============================================================
+const Avalanche = {
+  id: 'avalanche', bannerName: 'Avalanche',
+  init(s) {
+    const refCards = [pickCard(), pickCard()];
+    const used = new Set([cardKey(refCards[0]), cardKey(refCards[1])]);
+    const stack = [];
+    for (const c of allCards) if (!used.has(cardKey(c))) stack.push(c);
+    shuffle(stack);
+    s.modeData = { refCards, stack };
+    s.cards.p1 = refCards[0];
+    s.cards.p2 = refCards[1];
+    s.cards.center = stack[stack.length - 1] || null;
+    s.cards.grid = null;
+    s.scores = [0, 0];
+    s.banner = this.bannerName; s.bannerStat = 'Cards';
+    s.layout = 'two-player';
+    s.centerInfo = { label: 'Stack', count: stack.length };
+    s.showCenterCard = true;
+  },
+  onTap(s, playerIdx, symbolIdx) {
+    if (!s.modeData.stack.length) return { hit: false };
+    const center = s.modeData.stack[s.modeData.stack.length - 1];
+    const my = s.modeData.refCards[playerIdx];
+    if (my.includes(symbolIdx) && center.includes(symbolIdx)) {
+      s.scores[playerIdx]++;
+      s.modeData.stack.pop();
+      s.cards.center = s.modeData.stack[s.modeData.stack.length - 1] || null;
+      s.centerInfo.count = s.modeData.stack.length;
+      return { hit: true, scoreUp: playerIdx, confettiPlayer: playerIdx, flipCenter: true };
+    }
+    return { hit: false };
+  },
+  isOver(s) { return !s.modeData.stack.length || roundLimitReached(); },
+  finalize(s) { return { criterion: 'most', scores: s.scores }; },
+  matchHints(s) {
+    const c = s.cards.center; if (!c) return null;
+    return {
+      p1: s.cards.p1 ? findShared(s.cards.p1, c) : null,
+      p2: s.cards.p2 ? findShared(s.cards.p2, c) : null,
+    };
+  },
+};
+
+const Drain = {
+  id: 'drain', bannerName: 'Drain',
+  init(s) {
+    const deck = shuffle([...allCards]);
+    const handSize = 10;
+    const hands = [deck.slice(0, handSize), deck.slice(handSize, handSize * 2)];
+    const center = deck[handSize * 2];
+    s.modeData = { hands, center };
+    s.cards.p1 = hands[0][0];
+    s.cards.p2 = hands[1][0];
+    s.cards.center = center;
+    s.cards.grid = null;
+    s.scores = [hands[0].length, hands[1].length];
+    s.banner = this.bannerName; s.bannerStat = 'Hand';
+    s.layout = 'two-player';
+    s.centerInfo = null;
+    s.showCenterCard = true;
+  },
+  onTap(s, playerIdx, symbolIdx) {
+    const my = s.modeData.hands[playerIdx][0];
+    if (my && my.includes(symbolIdx) && s.modeData.center.includes(symbolIdx)) {
+      s.modeData.center = s.modeData.hands[playerIdx].shift();
+      s.cards.center = s.modeData.center;
+      s.cards.p1 = s.modeData.hands[0][0] || null;
+      s.cards.p2 = s.modeData.hands[1][0] || null;
+      s.scores = [s.modeData.hands[0].length, s.modeData.hands[1].length];
+      return { hit: true, scoreUp: playerIdx, confettiPlayer: playerIdx, flipCenter: true };
+    }
+    return { hit: false };
+  },
+  isOver(s) {
+    return s.modeData.hands[0].length === 0 ||
+           s.modeData.hands[1].length === 0 ||
+           roundLimitReached();
+  },
+  finalize(s) {
+    if (s.modeData.hands[0].length === 0)
+      return { winnerIdx: 0, msg: `${name(0)} emptied their hand!` };
+    if (s.modeData.hands[1].length === 0)
+      return { winnerIdx: 1, msg: `${name(1)} emptied their hand!` };
+    return { criterion: 'fewest', scores: [s.modeData.hands[0].length, s.modeData.hands[1].length] };
+  },
+  matchHints(s) {
+    const c = s.cards.center;
+    return {
+      p1: s.cards.p1 && c ? findShared(s.cards.p1, c) : null,
+      p2: s.cards.p2 && c ? findShared(s.cards.p2, c) : null,
+    };
+  },
+};
+
+const HotCard = {
+  id: 'hot_card', bannerName: 'Hot Card',
+  init(s) {
+    const deck = shuffle([...allCards]);
+    const hands = [deck.slice(0, HOT_CARD_HAND_SIZE),
+                   deck.slice(HOT_CARD_HAND_SIZE, HOT_CARD_HAND_SIZE * 2)];
+    s.modeData = { hands };
+    s.cards.p1 = hands[0][0];
+    s.cards.p2 = hands[1][0];
+    s.cards.center = null;
+    s.cards.grid = null;
+    s.scores = [hands[0].length, hands[1].length];
+    s.banner = this.bannerName; s.bannerStat = 'Hand';
+    s.layout = 'two-player';
+    s.centerInfo = null;
+    s.showCenterCard = false;
+  },
+  onTap(s, playerIdx, symbolIdx) {
+    const my  = s.modeData.hands[playerIdx][0];
+    const opp = s.modeData.hands[1 - playerIdx][0];
+    if (my && opp && my.includes(symbolIdx) && opp.includes(symbolIdx)) {
+      const card = s.modeData.hands[playerIdx].shift();
+      s.modeData.hands[1 - playerIdx].push(card);
+      s.cards.p1 = s.modeData.hands[0][0] || null;
+      s.cards.p2 = s.modeData.hands[1][0] || null;
+      s.scores = [s.modeData.hands[0].length, s.modeData.hands[1].length];
+      return { hit: true, scoreUp: 'both', confettiPlayer: playerIdx, flipCenter: false };
+    }
+    return { hit: false };
+  },
+  isOver(s) {
+    return s.modeData.hands[0].length === 0 ||
+           s.modeData.hands[1].length === 0 ||
+           roundLimitReached();
+  },
+  finalize(s) {
+    if (s.modeData.hands[0].length === 0)
+      return { winnerIdx: 0, msg: `${name(0)} dumped their hand!` };
+    if (s.modeData.hands[1].length === 0)
+      return { winnerIdx: 1, msg: `${name(1)} dumped their hand!` };
+    return { criterion: 'fewest', scores: [s.modeData.hands[0].length, s.modeData.hands[1].length] };
+  },
+  matchHints(s) {
+    const a = s.cards.p1, b = s.cards.p2;
+    if (!a || !b) return null;
+    const m = findShared(a, b);
+    return { p1: m, p2: m };
+  },
+};
+
+const PassCurse = {
+  id: 'pass_curse', bannerName: 'Pass the Curse',
+  init(s) {
+    const refCards = [pickCard(), pickCard()];
+    const used = new Set([cardKey(refCards[0]), cardKey(refCards[1])]);
+    const stack = [];
+    for (const c of allCards) if (!used.has(cardKey(c))) stack.push(c);
+    shuffle(stack);
+    s.modeData = { refCards, stack };
+    s.cards.p1 = refCards[0];
+    s.cards.p2 = refCards[1];
+    s.cards.center = stack[stack.length - 1] || null;
+    s.cards.grid = null;
+    s.scores = [0, 0];
+    s.banner = this.bannerName; s.bannerStat = 'Curse';
+    s.layout = 'two-player';
+    s.centerInfo = { label: 'Stack', count: stack.length };
+    s.showCenterCard = true;
+  },
+  onTap(s, victimIdx, symbolIdx) {
+    // Tapper presses the OPPONENT's card; victimIdx is whose card was tapped.
+    if (!s.modeData.stack.length) return { hit: false };
+    const center = s.modeData.stack[s.modeData.stack.length - 1];
+    const tapped = s.modeData.refCards[victimIdx];
+    if (tapped.includes(symbolIdx) && center.includes(symbolIdx)) {
+      s.scores[victimIdx]++;
+      s.modeData.stack.pop();
+      s.cards.center = s.modeData.stack[s.modeData.stack.length - 1] || null;
+      s.centerInfo.count = s.modeData.stack.length;
+      return { hit: true, scoreUp: victimIdx, confettiPlayer: 1 - victimIdx, flipCenter: true };
+    }
+    return { hit: false };
+  },
+  isOver(s) { return !s.modeData.stack.length || roundLimitReached(); },
+  finalize(s) { return { criterion: 'fewest', scores: s.scores }; },
+  matchHints(s) {
+    const c = s.cards.center; if (!c) return null;
+    return {
+      p1: s.cards.p1 ? findShared(s.cards.p1, c) : null,
+      p2: s.cards.p2 ? findShared(s.cards.p2, c) : null,
+    };
+  },
+};
+
+const TripleLock = {
+  id: 'triple_lock', bannerName: 'Triple Lock',
+  init(s) {
+    const deck = shuffle([...allCards]);
+    s.modeData = { deck, grid: [] };
+    s.cards.grid = s.modeData.grid;
+    s.cards.p1 = null; s.cards.p2 = null; s.cards.center = null;
+    s.scores = [0, 0];
+    s.banner = this.bannerName; s.bannerStat = '';
+    s.layout = 'grid';
+    s.centerInfo = null;
+    s.showCenterCard = false;
+    this.refillGrid(s);
+  },
+  refillGrid(s) {
+    const { deck, grid } = s.modeData;
+    while (grid.length < TRIPLE_LOCK_GRID_SIZE && deck.length > 0) grid.push(deck.shift());
+    let safety = 0;
+    while (!this.findTriples(grid).length && deck.length > 0 && safety < 20) {
+      const i = randInt(0, grid.length - 1);
+      deck.push(grid[i]);
+      shuffle(deck);
+      grid[i] = deck.shift();
+      safety++;
+    }
+  },
+  findTriples(grid) {
+    const tally = new Map();
+    grid.forEach((card, i) => {
+      card.forEach(sym => {
+        if (!tally.has(sym)) tally.set(sym, []);
+        tally.get(sym).push(i);
+      });
+    });
+    const out = [];
+    for (const [sym, list] of tally) if (list.length >= 3) out.push({ symbol: sym, cardIdxList: list });
+    return out;
+  },
+  onTap(s, gridIdx, symbolIdx, playerIdx) {
+    const triples = this.findTriples(s.modeData.grid);
+    const match = triples.find(t => t.symbol === symbolIdx);
+    if (match) {
+      const claimIds = match.cardIdxList.slice(0, 3);
+      s.scores[playerIdx]++;
+      claimIds.slice().sort((a, b) => b - a).forEach(i => s.modeData.grid.splice(i, 1));
+      this.refillGrid(s);
+      return { hit: true, scoreUp: playerIdx, claimedSymbol: match.symbol, claimedAt: claimIds };
+    }
+    return { hit: false };
+  },
+  isOver(s) {
+    const triples = this.findTriples(s.modeData.grid);
+    return triples.length === 0 || s.modeData.grid.length < 3 || roundLimitReached();
+  },
+  finalize(s) { return { criterion: 'most', scores: s.scores }; },
+  matchHints(s) {
+    const triples = this.findTriples(s.modeData.grid);
+    if (!triples.length) return null;
+    return { triples: triples.map(t => ({ symbol: t.symbol, cards: t.cardIdxList })) };
+  },
+};
+
+const MODE_HANDLERS = {
+  avalanche:   Avalanche,
+  drain:       Drain,
+  hot_card:    HotCard,
+  triple_lock: TripleLock,
+  pass_curse:  PassCurse,
+};
+
+// ============================================================
+// --- Helpers ---
+// ============================================================
+function pickCard()        { return allCards[randInt(0, allCards.length - 1)]; }
+function cardKey(card)     { return card.join(','); }
+function setScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ============================================================
+// --- Render: derives ALL UI from GameState ---
+// ============================================================
+function render(s) {
+  if (s.layout === 'menu')             setScreen('menu-screen');
+  else if (s.layout === 'two-player')  setScreen('game-screen');
+  else if (s.layout === 'grid')        setScreen('grid-screen');
+  else if (s.layout === 'stats')       setScreen('stats-screen');
+
+  if (s.layout === 'two-player') renderTwoPlayer(s);
+  else if (s.layout === 'grid')  renderGrid(s);
+
+  if (typeof debugState !== 'undefined' && debugState.visible) updateDebugPanel();
+}
+
+function renderTwoPlayer(s) {
+  const centerArea   = document.getElementById('center-area');
+  const centerCardEl = document.getElementById('center-card');
+  const leftInfo     = document.getElementById('center-info-left');
+  const rightInfo    = document.getElementById('center-info-right');
+  const card1El      = document.getElementById('card1');
+  const card2El      = document.getElementById('card2');
+
+  document.getElementById('score1-label').textContent = name(0);
+  document.getElementById('score2-label').textContent = name(1);
+  document.getElementById('score1').textContent       = s.scores[0];
+  document.getElementById('score2').textContent       = s.scores[1];
+
+  const bannerText = s.banner + (s.bannerStat ? ` · ${s.bannerStat}` : '');
+  document.getElementById('banner1').textContent = bannerText;
+  document.getElementById('banner2').textContent = bannerText;
+
+  centerArea.style.display    = (s.showCenterCard || s.centerInfo) ? '' : 'none';
+  centerCardEl.style.display  = s.showCenterCard ? '' : 'none';
+
+  if (s.centerInfo) {
+    leftInfo.style.visibility = 'visible';
+    leftInfo.querySelector('span:first-child').textContent = s.centerInfo.label;
+    document.getElementById('center-count').textContent    = s.centerInfo.count;
+  } else {
+    leftInfo.style.visibility = 'hidden';
+  }
+  rightInfo.style.visibility = 'hidden';
+
+  card1El.dataset.player = '1';
+  card2El.dataset.player = '2';
+
+  // Re-render cards only when their underlying array reference changes
+  const hints = (modeHandler && modeHandler.matchHints) ? modeHandler.matchHints(s) : null;
+  if (s.cards.p1 !== lastRender.p1) {
+    if (s.cards.p1) placeSymbolsOnCard(card1El, s.cards.p1, 158, hints && DEV_MODE ? hints.p1 : -1);
+    else card1El.innerHTML = '';
+    lastRender.p1 = s.cards.p1;
+  }
+  if (s.cards.p2 !== lastRender.p2) {
+    if (s.cards.p2) placeSymbolsOnCard(card2El, s.cards.p2, 158, hints && DEV_MODE ? hints.p2 : -1);
+    else card2El.innerHTML = '';
+    lastRender.p2 = s.cards.p2;
+  }
+  if (s.cards.center !== lastRender.center) {
+    if (s.cards.center) placeSymbolsOnCard(centerCardEl, s.cards.center, 124, -1);
+    else centerCardEl.innerHTML = '';
+    lastRender.center = s.cards.center;
+  }
+}
+
+function renderGrid(s) {
+  document.getElementById('grid-score1').textContent = s.scores[0];
+  document.getElementById('grid-score2').textContent = s.scores[1];
+
+  const gridNames = document.querySelectorAll('.grid-bar-name');
+  if (gridNames[0]) gridNames[0].textContent = name(1);
+  if (gridNames[1]) gridNames[1].textContent = name(0);
+
+  const gridArr = s.modeData.grid || [];
+  const sig = gridArr.map(c => c.join(',')).join('|');
+  if (sig === lastRender.gridSig) return;
+  lastRender.gridSig = sig;
+
+  const container = document.getElementById('grid-cards');
+  container.innerHTML = '';
+  const triples = TripleLock.findTriples(gridArr);
+  const hintSymbol = (DEV_MODE && triples.length) ? triples[0].symbol : -1;
+  gridArr.forEach((card, i) => {
+    const el = document.createElement('div');
+    el.className = 'card grid-card';
+    el.dataset.gridIdx = i;
+    placeSymbolsOnCard(el, card, 100, hintSymbol);
+    container.appendChild(el);
+  });
+}
+
+// ============================================================
+// --- Input dispatch (only place that turns input → state) ---
+// ============================================================
+function dispatchTwoPlayerTap(playerIdx, symbolIdx, cardEl) {
+  if (inputLock || !modeHandler) return;
+  const r = modeHandler.onTap(GameState, playerIdx, symbolIdx);
+  if (r.hit) {
+    inputLock = true;
+    animateCard(cardEl, 'correct');           // also bumps GameState.roundsPlayed
+    const confettiCardEl = document.getElementById(r.confettiPlayer === 0 ? 'card1' : 'card2');
+    burstConfetti(confettiCardEl, symbolIdx);
+    if (r.scoreUp === 'both') { popScore('score1'); popScore('score2'); }
+    else if (r.scoreUp === 0 || r.scoreUp === 1) {
+      popScore(r.scoreUp === 0 ? 'score1' : 'score2');
+    }
+    if (r.flipCenter && GameState.cards.center) {
+      flipAnimEl(document.getElementById('center-card'));
+    }
+    setTimeout(() => {
+      inputLock = false;
+      if (modeHandler.isOver(GameState)) finishGame();
+      else render(GameState);
+    }, 280);
+  } else {
+    animateCard(cardEl, 'wrong');
+  }
+}
+
+function dispatchGridTap(symbolIdx, gridCardEl, playerIdx) {
+  if (inputLock || !modeHandler) return;
+  const gridIdx = parseInt(gridCardEl.dataset.gridIdx, 10);
+  const r = modeHandler.onTap(GameState, gridIdx, symbolIdx, playerIdx);
+  if (r.hit) {
+    GameState.roundsPlayed++;
+    inputLock = true;
+    Sound.roundWon();
+    popScore(playerIdx === 0 ? 'grid-score1' : 'grid-score2');
+    const cardsEls = document.querySelectorAll('.grid-card');
+    r.claimedAt.forEach(i => {
+      if (cardsEls[i]) {
+        cardsEls[i].classList.add(playerIdx === 0 ? 'claimed-1' : 'claimed-2');
+        burstConfetti(cardsEls[i], r.claimedSymbol);
+      }
+    });
+    setTimeout(() => {
+      inputLock = false;
+      if (modeHandler.isOver(GameState)) finishGame();
+      else render(GameState);
+    }, 380);
+  } else {
+    animateCard(gridCardEl, 'wrong');
+  }
+}
+
+function finishGame() {
+  const result = modeHandler.finalize(GameState);
+  if (result.winnerIdx !== undefined) endGameWinner(result.winnerIdx, result.msg);
+  else                                 endGame(result.scores, result.criterion);
+}
+
+// ============================================================
+// --- DOM event handlers ---
+// ============================================================
+function onGameScreenTap(e) {
+  if (inputLock) return;
+  let cardEl = e.target;
+  while (cardEl && !cardEl.classList.contains('player-card')) {
+    cardEl = cardEl.parentElement;
+    if (!cardEl || cardEl === document.body) return;
+  }
+  if (!cardEl) return;
+  let symEl = e.target;
+  while (symEl && !symEl.dataset.symbolIdx) symEl = symEl.parentElement;
+  if (!symEl) return;
+  const playerIdx = cardEl.id === 'card1' ? 0 : 1;
+  const symbolIdx = parseInt(symEl.dataset.symbolIdx, 10);
+  e.preventDefault();
+  dispatchTwoPlayerTap(playerIdx, symbolIdx, cardEl);
+}
+
+function onGridScreenTap(e) {
+  if (inputLock || !modeHandler || GameState.layout !== 'grid') return;
+  let symEl = e.target;
+  while (symEl && !symEl.dataset.symbolIdx) symEl = symEl.parentElement;
+  if (!symEl) return;
+  let cardEl = symEl;
+  while (cardEl && !cardEl.classList.contains('grid-card')) cardEl = cardEl.parentElement;
+  if (!cardEl) return;
+  const symbolIdx = parseInt(symEl.dataset.symbolIdx, 10);
+  const y = (e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY);
+  const playerIdx = (y < window.innerHeight / 2) ? 1 : 0;
+  e.preventDefault();
+  dispatchGridTap(symbolIdx, cardEl, playerIdx);
+}
+
+// ============================================================
+// --- Game lifecycle ---
+// ============================================================
+function endGame(scoreArr, criterion) {
+  let winnerIdx = -1;
+  if (criterion === 'fewest') {
+    if (scoreArr[0] < scoreArr[1])      winnerIdx = 0;
+    else if (scoreArr[1] < scoreArr[0]) winnerIdx = 1;
+  } else {
+    if (scoreArr[0] > scoreArr[1])      winnerIdx = 0;
+    else if (scoreArr[1] > scoreArr[0]) winnerIdx = 1;
+  }
+  recordGameEnd(winnerIdx);
+  const title = winnerIdx === -1 ? "It's a tie!" : `${name(winnerIdx)} wins!`;
+  showWinner(title, scoreArr);
+}
+
+function endGameWinner(playerIdx, msg) {
+  recordGameEnd(playerIdx);
+  showWinner(msg || `${name(playerIdx)} wins!`, null);
+}
+
+function recordGameEnd(winnerIdx) {
+  if (!GameState.mode) return;
+  Stats.recordGame({
+    mode: GameState.mode,
+    names: [name(0), name(1)],
+    winnerIdx,
+    rounds: GameState.roundsPlayed,
+  });
+}
+
+function showWinner(title, scoreArr) {
+  Sound.gameOver();
+  // Single hook for ALL ad / monetization triggers — game logic stays unaware
+  MonetizationManager.onGameOver();
+  document.getElementById('winner-title').textContent = title;
+  if (scoreArr) {
+    document.getElementById('winner-scores').innerHTML =
+      `<strong>${escapeHtml(name(0))}:</strong> ${scoreArr[0]}<br><strong>${escapeHtml(name(1))}:</strong> ${scoreArr[1]}`;
+  } else {
+    document.getElementById('winner-scores').innerHTML = '';
+  }
+  document.getElementById('winner-overlay').classList.add('show');
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function startMode(modeId) {
+  const handler = MODE_HANDLERS[modeId];
+  if (!handler) return;
+  modeHandler = handler;
+
+  // Regenerate cards according to current settings
+  allCards = generateAllCards(cardOrder());
+
+  // Reset GameState
+  GameState.mode         = modeId;
+  GameState.config       = snapshotConfig();
+  GameState.roundsPlayed = 0;
+  GameState.winner       = null;
+  resetRenderCache();
+
+  document.getElementById('winner-overlay').classList.remove('show');
+  inputLock = false;
+
+  modeHandler.init(GameState);
+  render(GameState);
+}
+
+function backToMenu() {
+  modeHandler = null;
+  GameState.mode   = null;
+  GameState.layout = 'menu';
+  resetRenderCache();
+  document.getElementById('winner-overlay').classList.remove('show');
+  document.getElementById('intro-overlay').classList.remove('show');
+  setScreen('menu-screen');
+  updateMenuLeader();
+}
+
+function openStatsScreen() {
+  Sound.menuClick();
+  renderStatsScreen();
+  setScreen('stats-screen');
+}
+
+function showConfirm(onOk) {
+  const overlay = document.getElementById('confirm-overlay');
+  overlay.classList.add('show');
+  const ok = document.getElementById('confirm-ok');
+  const cancel = document.getElementById('confirm-cancel');
+  const cleanup = () => {
+    overlay.classList.remove('show');
+    ok.removeEventListener('click', okHandler);
+    cancel.removeEventListener('click', cancelHandler);
+  };
+  const okHandler = (e) => { e.preventDefault(); Sound.menuClick(); cleanup(); onOk(); };
+  const cancelHandler = (e) => { e.preventDefault(); Sound.menuClick(); cleanup(); };
+  ok.addEventListener('click', okHandler);
+  cancel.addEventListener('click', cancelHandler);
+}
+
+// ============================================================
+// --- Menu / Intro UI ---
+// ============================================================
+// ============================================================
+// --- Stats screen rendering ---
+// ============================================================
+function renderStatsScreen() {
+  const body = document.getElementById('stats-body');
+  const d = Stats.data;
+  const fav = Stats.favoriteMode();
+  const longest = Stats.longestStreak();
+  const lb = Stats.leaderboard();
+
+  let html = '';
+
+  // Overview card
+  html += `
+    <div class="stats-card">
+      <div class="stats-overview">
+        <div><div class="num">${d.totalRounds}</div><div class="lbl">Rounds</div></div>
+        <div><div class="num">${d.totalGames}</div><div class="lbl">Games</div></div>
+        <div><div class="num">${Object.keys(d.players).length}</div><div class="lbl">Players</div></div>
+      </div>
+    </div>`;
+
+  // Players card
+  html += `<div class="stats-card"><div class="stats-card-label">Players</div>`;
+  if (lb.length === 0) {
+    html += `<div class="stats-empty">No games played yet.</div>`;
+  } else {
+    lb.forEach((p, i) => {
+      const rate = p.games ? Math.round((p.wins / p.games) * 100) : 0;
+      const rank = i === 0 ? '🏆' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : `${i + 1}`));
+      html += `
+        <div class="player-row">
+          <div class="player-rank">${rank}</div>
+          <div class="player-name">${escapeHtml(p.name)}</div>
+          <div class="player-stats">${p.wins}/${p.games}</div>
+          <div class="player-rate">${rate}%</div>
+        </div>`;
+    });
+  }
+  html += `</div>`;
+
+  // Favorite mode card
+  html += `<div class="stats-card"><div class="stats-card-label">Favorite Mode</div>`;
+  if (fav) {
+    const mode = MODES.find(m => m.id === fav.id);
+    html += `
+      <div class="stats-mode-row">
+        <span class="mode-emoji">${mode ? mode.emoji : '🎮'}</span>
+        <span><strong>${mode ? mode.name : fav.id}</strong> · ${fav.count} ${fav.count === 1 ? 'game' : 'games'}</span>
+      </div>`;
+  } else {
+    html += `<div class="stats-empty">No mode plays recorded.</div>`;
+  }
+  html += `</div>`;
+
+  // Longest streak card
+  html += `<div class="stats-card"><div class="stats-card-label">Longest Win Streak</div>`;
+  if (longest) {
+    html += `
+      <div class="stats-mode-row">
+        <span class="mode-emoji">🔥</span>
+        <span><strong>${escapeHtml(longest.name)}</strong> · ${longest.streak} in a row</span>
+      </div>`;
+  } else {
+    html += `<div class="stats-empty">Win a game to start a streak.</div>`;
+  }
+  html += `</div>`;
+
+  body.innerHTML = html;
+}
+
+function updateMenuLeader() {
+  const el = document.getElementById('menu-leader');
+  const lead = Stats.leadingPlayer();
+  if (!lead) { el.classList.remove('show'); return; }
+  el.innerHTML = `<span class="trophy">🏆</span> Leading: <strong>${escapeHtml(lead.name)}</strong> · ${lead.wins} ${lead.wins === 1 ? 'win' : 'wins'}`;
+  el.classList.add('show');
+}
+
+function buildThemePicker() {
+  const picker = document.getElementById('theme-picker');
+  picker.innerHTML = '';
+  for (const id of Object.keys(THEMES)) {
+    const t = THEMES[id];
+    const card = document.createElement('div');
+    card.className = 'theme-card';
+    card.dataset.themeId = id;
+    // 4 preview emoji from the set (evenly sampled)
+    const s = t.symbols;
+    const sample = [s[0], s[Math.floor(s.length / 4)], s[Math.floor(s.length / 2)], s[Math.floor(s.length * 3 / 4)]];
+    card.innerHTML = `
+      <div class="theme-preview">
+        <span>${sample[0]}</span><span>${sample[1]}</span>
+        <span>${sample[2]}</span><span>${sample[3]}</span>
+      </div>
+      <div class="theme-card-name">${t.name}</div>`;
+    const select = (e) => {
+      e.preventDefault();
+      Sound.menuClick();
+      setTheme(id);
+    };
+    card.addEventListener('click', select);
+    card.addEventListener('touchstart', select, { passive: false });
+    picker.appendChild(card);
+  }
+  updateThemePickerUI();
+}
+
+function updateThemePickerUI() {
+  const picker = document.getElementById('theme-picker');
+  if (!picker) return;
+  picker.querySelectorAll('.theme-card').forEach(el => {
+    el.classList.toggle('selected', el.dataset.themeId === currentThemeId);
+  });
+}
+
+function buildMenu() {
+  const list = document.getElementById('mode-list');
+  list.innerHTML = '';
+  for (const m of MODES) {
+    const btn = document.createElement('button');
+    btn.className = 'mode-btn';
+    btn.innerHTML = `
+      <span class="mode-emoji">${m.emoji}</span>
+      <span class="mode-text">
+        <span class="mode-name">${m.name}</span>
+        <span class="mode-desc">${m.desc}</span>
+      </span>`;
+    const open = (e) => { e.preventDefault(); Sound.menuClick(); openIntro(m); };
+    btn.addEventListener('click', open);
+    btn.addEventListener('touchstart', open, { passive: false });
+    list.appendChild(btn);
+  }
+}
+
+let pendingMode = null;
+function openIntro(mode) {
+  pendingMode = mode;
+  document.getElementById('intro-emoji').textContent = mode.emoji;
+  document.getElementById('intro-name').textContent  = mode.name;
+  document.getElementById('intro-desc').textContent  = mode.desc;
+  syncSettingsPanel();
+  document.getElementById('intro-overlay').classList.add('show');
+}
+
+function syncSettingsPanel() {
+  document.querySelectorAll('#rounds-row button').forEach(b => {
+    b.classList.toggle('selected', String(b.dataset.val) === String(settings.rounds));
+  });
+  document.querySelectorAll('#symbols-row button').forEach(b => {
+    b.classList.toggle('selected', parseInt(b.dataset.val, 10) === settings.symbolsPerCard);
+  });
+  document.getElementById('name1').value = settings.playerNames[0];
+  document.getElementById('name2').value = settings.playerNames[1];
+}
+
+function wireSettingsPanel() {
+  document.querySelectorAll('#rounds-row button').forEach(b => {
+    const handle = (e) => {
+      e.preventDefault();
+      Sound.menuClick();
+      const v = b.dataset.val;
+      settings.rounds = (v === 'unlimited') ? 'unlimited' : parseInt(v, 10);
+      saveSettings();
+      syncSettingsPanel();
+    };
+    b.addEventListener('click', handle);
+    b.addEventListener('touchstart', handle, { passive: false });
+  });
+  document.querySelectorAll('#symbols-row button').forEach(b => {
+    const handle = (e) => {
+      e.preventDefault();
+      Sound.menuClick();
+      settings.symbolsPerCard = parseInt(b.dataset.val, 10);
+      saveSettings();
+      syncSettingsPanel();
+    };
+    b.addEventListener('click', handle);
+    b.addEventListener('touchstart', handle, { passive: false });
+  });
+  const commitName = (idx, el) => {
+    const v = el.value.trim().slice(0, 14) || `Player ${idx + 1}`;
+    settings.playerNames[idx] = v;
+    saveSettings();
+  };
+  const n1 = document.getElementById('name1');
+  const n2 = document.getElementById('name2');
+  n1.addEventListener('input', () => commitName(0, n1));
+  n2.addEventListener('input', () => commitName(1, n2));
+  n1.addEventListener('blur',  () => { n1.value = settings.playerNames[0]; });
+  n2.addEventListener('blur',  () => { n2.value = settings.playerNames[1]; });
+}
+
+document.getElementById('intro-start').addEventListener('click', (e) => {
+  e.preventDefault();
+  Sound.menuClick();
+  document.getElementById('intro-overlay').classList.remove('show');
+  if (pendingMode) startMode(pendingMode.id);
+});
+document.getElementById('intro-back').addEventListener('click', (e) => {
+  e.preventDefault();
+  Sound.menuClick();
+  document.getElementById('intro-overlay').classList.remove('show');
+});
+
+document.getElementById('play-again-btn').addEventListener('click', (e) => {
+  e.preventDefault();
+  Sound.menuClick();
+  if (GameState.mode) startMode(GameState.mode);
+});
+document.getElementById('menu-btn').addEventListener('click', (e) => {
+  e.preventDefault();
+  Sound.menuClick();
+  backToMenu();
+});
+
+// Stats screen wiring
+document.getElementById('open-stats-btn').addEventListener('click', openStatsScreen);
+document.getElementById('open-stats-btn').addEventListener('touchstart', (e) => { e.preventDefault(); openStatsScreen(); }, { passive: false });
+
+document.getElementById('stats-back-btn').addEventListener('click', (e) => { e.preventDefault(); Sound.menuClick(); backToMenu(); });
+document.getElementById('stats-back-btn').addEventListener('touchstart', (e) => { e.preventDefault(); Sound.menuClick(); backToMenu(); }, { passive: false });
+
+document.getElementById('reset-stats-btn').addEventListener('click', (e) => {
+  e.preventDefault();
+  Sound.menuClick();
+  showConfirm(() => {
+    Stats.reset();
+    renderStatsScreen();
+    updateMenuLeader();
+  });
+});
+
+// Mute toggle (corner + menu)
+const onMuteToggle = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  Sound.ensureCtx();           // user gesture — unlock audio
+  const nowMuted = Sound.toggle();
+  if (!nowMuted) Sound.menuClick();
+};
+const muteBtn     = document.getElementById('mute-btn');
+const menuSoundBtn = document.getElementById('menu-sound-btn');
+muteBtn.addEventListener('click', onMuteToggle);
+muteBtn.addEventListener('touchstart', onMuteToggle, { passive: false });
+menuSoundBtn.addEventListener('click', onMuteToggle);
+menuSoundBtn.addEventListener('touchstart', onMuteToggle, { passive: false });
+
+document.getElementById('back-btn').addEventListener('click', backToMenu);
+document.getElementById('back-btn').addEventListener('touchstart', (e) => { e.preventDefault(); backToMenu(); }, { passive: false });
+document.getElementById('back-btn-grid').addEventListener('click', backToMenu);
+document.getElementById('back-btn-grid').addEventListener('touchstart', (e) => { e.preventDefault(); backToMenu(); }, { passive: false });
+
+// ============================================================
+// --- Global event wiring ---
+// ============================================================
+document.getElementById('game-screen').addEventListener('click', onGameScreenTap);
+document.getElementById('game-screen').addEventListener('touchstart', onGameScreenTap, { passive: false });
+
+document.getElementById('grid-screen').addEventListener('click', onGridScreenTap);
+document.getElementById('grid-screen').addEventListener('touchstart', onGridScreenTap, { passive: false });
+
+// ============================================================
+// --- Init ---
+// ============================================================
+loadSettings();
+Stats.load();
+MonetizationManager.init();
+allCards = generateAllCards(cardOrder());
+verifyCardMath(allCards);
+Sound.init();
+updateMuteUI();
+wireSettingsPanel();
+updateMenuLeader();
+updateMonetizationUI();
+
+// --- Support / monetization buttons ---
+const removeAdsBtn = document.getElementById('remove-ads-btn');
+const tipBtn       = document.getElementById('tip-btn');
+const onRemoveAds = (e) => { e.preventDefault(); Sound.menuClick(); MonetizationManager.purchaseRemoveAds(); };
+const onTip       = (e) => { e.preventDefault(); Sound.menuClick(); MonetizationManager.openTipJar(); };
+removeAdsBtn.addEventListener('click', onRemoveAds);
+removeAdsBtn.addEventListener('touchstart', onRemoveAds, { passive: false });
+tipBtn.addEventListener('click', onTip);
+tipBtn.addEventListener('touchstart', onTip, { passive: false });
+
+// --- Ad modal buttons ---
+const adWatchBtn   = document.getElementById('ad-watch');
+const adDismissBtn = document.getElementById('ad-dismiss');
+const onAdWatch   = (e) => { e.preventDefault(); Sound.menuClick(); MonetizationManager.watchAd(); };
+const onAdDismiss = (e) => { e.preventDefault(); Sound.menuClick(); MonetizationManager.hideAdModal(); };
+adWatchBtn.addEventListener('click', onAdWatch);
+adWatchBtn.addEventListener('touchstart', onAdWatch, { passive: false });
+adDismissBtn.addEventListener('click', onAdDismiss);
+adDismissBtn.addEventListener('touchstart', onAdDismiss, { passive: false });
+
+// 5-tap logo to toggle debug panel
+const logoEl = document.getElementById('menu-logo');
+const onLogoTap = (e) => {
+  e.preventDefault();
+  const now = Date.now();
+  if (now - debugState.lastTap > 1500) debugState.taps = 0;
+  debugState.lastTap = now;
+  debugState.taps++;
+  if (debugState.taps >= 5) {
+    debugState.taps = 0;
+    toggleDebugPanel();
+  }
+};
+logoEl.addEventListener('click', onLogoTap);
+logoEl.addEventListener('touchstart', onLogoTap, { passive: false });
+
+document.getElementById('debug-close').addEventListener('click', toggleDebugPanel);
+document.getElementById('debug-close').addEventListener('touchstart',
+  (e) => { e.preventDefault(); toggleDebugPanel(); }, { passive: false });
+
+// Load saved theme
+try {
+  const savedTheme = localStorage.getItem('symble_theme');
+  if (savedTheme && THEMES[savedTheme]) {
+    currentThemeId = savedTheme;
+    SYMBOLS = THEMES[savedTheme].symbols;
+  }
+} catch (e) {}
+
+buildThemePicker();
+buildMenu();
+setScreen('menu-screen');
+
+// Unlock audio context on first user gesture (browser autoplay policy)
+const unlockAudio = () => {
+  Sound.ensureCtx();
+  document.removeEventListener('touchstart', unlockAudio);
+  document.removeEventListener('click', unlockAudio);
+  document.removeEventListener('keydown', unlockAudio);
+};
+document.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
+document.addEventListener('click', unlockAudio, { once: true });
+document.addEventListener('keydown', unlockAudio, { once: true });
+</script>
+</body>
+</html>
